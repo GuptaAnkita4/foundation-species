@@ -1,0 +1,64 @@
+Common.name,Scientific.name,Code,CodeOld,IUCN.status,DetectionGroup,DetectionCode,functionalGroup,Group,FeedingGuildOld,residentStat,LargePredator,feedingGuild,Column.1,Secondary.diet,Primary,Level
+Great cormorant,Phalacrocorax carbo,GRCO,GC,LC,CormorantAnhigas,CORM,Diving fishers,CormorantsAnhingas,Piscivore,Native nonbreeding,Yes,Piscivore,FALSE,"Vertebrates, Invertebrates",Fish,"""5-carnivore,piscivore"""
+Indian cormorant,Phalacrocorax fuscicollis,INCO,IC,LC,CormorantAnhigas,CORM,Diving fishers,CormorantsAnhingas,Piscivore,Native resident,Yes,Piscivore,FALSE,,,"""5-carnivore,piscivore"""
+Little cormorant,Microcarbo niger,LICO,LC,LC,CormorantAnhigas,CORM,Diving fishers,CormorantsAnhingas,Piscivore,Native resident,Yes,Piscivore,FALSE,,Na,"""5-carnivore,piscivore"""
+Oriental darter,Anhinga melanogaster,ORDA,OD,NT,CormorantAnhigas,CORM,Diving fishers,CormorantsAnhingas,Piscivore,Native resident,Yes,Piscivore,FALSE,"Invertebrates, Vertebrates",Fish,"""5-carnivore,piscivore"""
+Great egret,Ardea alba,GREG,GE,LC,Egret,EGRE,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,FALSE,,,"""5-carnivore,piscivore"""
+Intermediate egret,Ardea intermedia,INEG,IE,LC,Egret,EGRE,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,FALSE,,,"""5-carnivore,piscivore"""
+Little egret,Egretta garzetta,LIEG,LE,LC,Egret,EGRE,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,FALSE,Vertebrates,Invertebrates,
+Common pochard,Aythya ferina,COPO,CPO,LC,Grebe-Duck,DUCK,Diving ducks,WaterfowlGrebes,Omnivore,Native nonbreeding,No,Omnivore,FALSE,"Vertebrates, Invertebrates, Fish",Plants,
+Cotton pygmy goose,Nettapus coromandelianus,CPGO,CPG,LC,Grebe-Duck,DUCK,Perching duck,WaterfowlGrebes,Herbivore,Native resident,No,Herbivore,FALSE,Invertebrates,Plants,1-herbivore
+Eurasian Wigeon,Mareca penelope,EUWI,EWG,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Herbivore,Native nonbreeding,No,Herbivore,FALSE,,,1-herbivore
+Gadwall,Mareca strepera,GADW,GDW,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Herbivore,Native nonbreeding,No,Herbivore,FALSE,,,1-herbivore
+Garganey,Spatula querquedula,GARG,GG,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Omnivore,Native nonbreeding,No,Omnivore,FALSE,,,
+Green-winged Teal,Anas crecca,GWTE,GWT,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Omnivore,Native nonbreeding,No,Omnivore,FALSE,Invertebrates,Plants,
+Greylag Goose,Anser anser,GRGO,GLG,LC,Grebe-Duck,DUCK,,WaterfowlGrebes,Herbivore,Native nonbreeding,,Herbivore,FALSE,,,1-herbivore
+Indian spot-billed duck,Anas poecilorhyncha,ISBD,ISBD,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Omnivore,Native resident,No,Omnivore,FALSE,Invertebrates,Plants,1-herbivore
+Knob-billed duck,Sarkidiornis melanotos,KBDU,KBD,LC,Grebe-Duck,DUCK,Perching duck,WaterfowlGrebes,Omnivore,Native resident,No,Omnivore,FALSE,Invertebrates,Plants,
+Lesser whistling duck,Dendrocygna javanica,LWDU,LWD,LC,Grebe-Duck,DUCK,Perching duck,WaterfowlGrebes,Herbivore,Native resident,No,Herbivore,FALSE,,,1-herbivore
+Little grebe,Tachybaptus ruficollis,LIGR,LG,LC,Grebe-Duck,DUCK,Diving fishers,WaterfowlGrebes,Carnivore,Native resident,No,Carnivore,,Vertebrates,Invertebrates,
+Northern Pintail,Anas acuta,NOPI,NPT,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Omnivore,Native nonbreeding,No,Omnivore,FALSE,,Plants,
+Northern Shoveler,Spatula clypeata,NOSH,NSV,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Omnivore,Native nonbreeding,No,Omnivore,,Plants,Invertebrates,
+Ruddy shelduck,Tadorna ferruginea,RUSH,RSD,LC,Grebe-Duck,DUCK,Dabbling ducks,WaterfowlGrebes,Herbivore,Native nonbreeding,No,Herbivore,FALSE,"Vertebrates,invertebrates",Plants,1-herbivore
+White-breasted waterhen,Amaurornis phoenicurus,WBWA,WBW,LC,Grebe-Duck,DUCK,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,,"Plants,fish",Invertebrates,3-invertebrates
+Black-crowned night heron,Nycticorax nycticorax,BCNH,BNH,LC,"Heron(small, non-white)",HERO,Small waders,HeronsIbis,Carnivore,Native resident,No,Carnivore,FALSE,,,"""5-carnivore,piscivore"""
+Indian pond heron,Ardeola grayii,IPHE,IPH,LC,"Heron(small, non-white)",HERO,Small waders,HeronsIbis,Carnivore,Native resident,No,Carnivore,FALSE,PLANTS,"iNVERTEBRATES, VERTEBRATES",
+Striated heron,Butorides striata,STHE,STH,LC,"Heron(small, non-white)",HERO,Small waders,HeronsIbis,Carnivore,Native resident,No,Carnivore,FALSE,"Vertebrates,invertebrates",Fish,"""5-carnivore,piscivore"""
+Yellow bittern,Ixobrychus sinensis,YEBI,YB,LC,"Heron(small, non-white)",HERO,Small waders,HeronsIbis,Piscivore,Native nonbreeding,No,Piscivore,,vertebrates,Invertebrates,4-invertebrates/vertebrates
+Glossy ibis,Plegadis falcinellus,GLIB,GI,LC,Ibis,IBIS,Large waders,HeronsIbis,Omnivore,Native nonbreeding,Yes,Omnivore,FALSE,Vertebrates,Invertebrates,
+Bronze-winged jacana,Metopidius indicus,BWJA,BWJ,LC,Jacana,JACA,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,FALSE,Invertebrates,Plants,2-plant/invertebrates
+Pheasant-tailed jacana,Hydrophasianus chirurgus,PTJA,PTJ,LC,Jacana,JACA,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,FALSE,Plants,Invertebrates,
+Common kingfisher,Alcedo atthis,COKI,CK,LC,Kingfisher,KING,Diving fishers,Kingfishers,Piscivore,Native resident,No,Piscivore,FALSE,Invertebrates,Fish,"""5-carnivore,piscivore"""
+Pied kingfisher,Ceryle rudis,PIKI,PK,LC,Kingfisher,KING,Diving fishers,Kingfishers,Piscivore,Native resident,No,Piscivore,FALSE,Invertebrates,Fish,"""5-carnivore,piscivore"""
+White-throated kingfisher,Halcyon smyrnensis,WTKI,WTK,LC,Kingfisher,KING,Diving fishers,Kingfishers,Carnivore,Native resident,No,Carnivore,FALSE,invertebrates,vertebrates,"""5-carnivore,piscivore"""
+Purple heron,Ardea purpurea,PUHE,PH,LC,Large wader,LWAD,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,FALSE,,,"""5-carnivore,piscivore"""
+Red-naped ibis,Pseudibis papillosa,RNIB,RNI,LC,Ibis,IBIS,Large waders,HeronsIbis,Omnivore,Native resident,Yes,Omnivore,,Vertebrates,Invertebrates,
+Common moorhen,Gallinula chloropus,COMO,CMH,LC,Rails,RAIL,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,FALSE,"Vertebrates, Invertebrates",Plants,
+Eurasian coot,Fulica atra,EUCO,EC,LC,Rails,RAIL,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,FALSE,"Vertebrates, Invertebrates, Fish",Plants,
+Grey-headed swamphen,Porphyrio poliocephalus,GHSW,GHS,LC,Rails,RAIL,Vegetation gleaners,Rails,Omnivore,Native resident,No,Omnivore,FALSE,,Plants,
+Black-tailed Godwit,Limosa limosa,BTGO,BTG,NT,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,,Invertivore,FALSE,"Vertebrates, Plants",Invertebrates,4-invertebrates/vertebrates
+Common Redshank,Tringa totanus,CORE,CRS,LC,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native nonbreeding,No,Omnivore,FALSE,Vertebrates,Invertebrates,4-invertebrates/vertebrates
+Common sandpiper,Actitis hypoleucos,COSA,CS,LC,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native nonbreeding,No,Omnivore,FALSE,"Vertebrates, Plants",Invertebrates,4-invertebrates/vertebrates
+Greater painted snipe,Rostratula benghalensis,GPSN,GPS,LC,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native resident,No,Omnivore,FALSE,Plants,Invertebrates,
+Green Sandpiper,Tringa ochropus,GRSA,GS,LC,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native nonbreeding,No,Omnivore,FALSE,Fish,Invertebrates,
+Indian stone-curlew,Burhinus indicus,ISCU,ISC,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native resident,No,Invertivore,FALSE,Vertebrates,Invertebrates,
+Little ringed plover,Charadrius dubius,LRPL,LRP,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native resident,No,Invertivore,FALSE,,,
+Little stint,Calidris minuta,LIST,LS,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,No,Invertivore,FALSE,Plants,Invertebrates,
+Marsh Sandpiper,Tringa stagnatilis,MASA,MS,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,No,Invertivore,,"Fish,Plants",Invertebrates,
+Pacific golden-plover,Pluvialis fulva,PGPL,PGP,LC,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native nonbreeding,No,Omnivore,FALSE,Plants,Invertebrates,
+Ruff,Calidris pugnax,RUFF,RF,,Small wader,SWAD,Small waders,Shorebirds,Omnivore,Native nonbreeding,,Omnivore,,"Vertebrates,plants",Invertebrates,
+Spotted redshank,Tringa erythropus,SPRE,SR,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,No,Invertivore,FALSE,Vertebrates,Invertebrates,
+Temminck's stint,Calidris temminckii,TEST,TS,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,No,Invertivore,FALSE,Plants,Invertebrates,2-plant/invertebrates
+Wood sandpiper,Tringa glareola,WOSA,WS,LC,Small wader,SWAD,Small waders,Shorebirds,Invertivore,Native nonbreeding,No,Invertivore,FALSE,,,3-invertebrates
+Black-winged stilt,Himantopus himantopus,BWST,BWS,LC,Stilt-Lapwing,STLA,Small waders,Shorebirds,Invertivore,Native resident,No,Insectivore,FALSE,,Invertebrates,3-invertebrates
+Red-wattled lapwing,Vanellus indicus,RWLA,RWL,LC,Stilt-Lapwing,STLA,Small waders,Shorebirds,Invertivore,Native resident,No,Invertivore,FALSE,,,
+Asian openbill,Anastomus oscitans,ASOP,AO,LC,Stork-Crane-Heron,STCR,Large waders,Storks,Invertivore,Native resident,Yes,Invertivore,FALSE,Vertebrates,Invertebrates,4-invertebrates/vertebrates
+Asian Woolly-necked stork,Ciconia episcopus,AWNS,WNS,VU,Stork-Crane-Heron,STCR,Large waders,Storks,Omnivore,Native resident,Yes,Omnivore,FALSE,,,"""5-carnivore,piscivore"""
+Eurasian spoonbill,Platalea leucorodia,EUSP,ES,LC,Stork-Crane-Heron,STCR,Large waders,HeronsIbis,Invertivore,Native resident,Yes,Invertivore,FALSE,"Vertebrates, Plants",Invertebrates,
+Greater flamingo,Phoenicopterus roseus,GRFL,GFO,LC,Stork-Crane-Heron,STCR,Large waders,Storks,Omnivore,Native nonbreeding,Yes,Omnivore,FALSE,"Plants, Vertebrates",Invertebrates,
+Grey heron,Ardea cinerea,GRHE,GH,LC,Stork-Crane-Heron,STCR,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,FALSE,,,"""5-carnivore,piscivore"""
+Painted stork,Mycteria leucocephala,PAST,PS,NT,Stork-Crane-Heron,STCR,Large waders,Storks,Piscivore,Native resident,Yes,Piscivore,FALSE,"Invertebrates, Vertebrates",Fish,"""5-carnivore,piscivore"""
+Sarus crane,Antigone antigone,SACR,SC,VU,Stork-Crane-Heron,STCR,Large waders,Others,Omnivore,Native resident,No,Omnivore,FALSE,others,Plants,
+River tern,Sterna aurantia,RITE,RT,VU,Tern,TERN,Diving fishers,Terns,Piscivore,Native resident,No,Piscivore,FALSE,Invertebrates,Fish,"""5-carnivore,piscivore"""
+Whiskered tern,Chlidonias hybrida,WHTE,WT,LC,Tern,TERN,Surface fishers,Terns,Carnivore,Native nonbreeding,No,Carnivore,FALSE,invertebrates,vertebrates,"""5-carnivore,piscivore"""
+Black-headed Ibis,Threskiornis melanocephalus,BHIB,BHI,NT,Ibis,IBIS,Large waders,HeronsIbis,Carnivore,Native resident,Yes,Carnivore,,,,
