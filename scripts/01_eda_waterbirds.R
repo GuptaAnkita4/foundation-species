@@ -5,7 +5,8 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(patchwork)
   library(tidyr)
-  source(here("src/R/eda_utils.R"))
+  source(here("src/eda_utils.R"))
+  source(here("src/load_data.R"))
 })
 
 # ---- params / output dir ----
@@ -18,6 +19,21 @@ dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 #      xlab = "Winter wetland vegetation", ylab = "Winter wetland area")
 # boxplot(s.habitat$wetlandTot ~ s.habitat$WVclass,
 #         xlab = "WV class (summer)", ylab = "Wetland area (ha)")
+
+
+dat <- load_all_data()
+
+s.birds.ab <- dat$s.birds.ab
+w.birds.ab <- dat$w.birds.ab
+
+s.habitat <- dat$s.habitat
+s.indices <- dat$s.indices
+
+w.habitat <- dat$w.habitat
+w.indices <- dat$w.indices
+
+waterbirds <- dat$waterbirds
+func.dat.diet <- dat$func.dat.diet
 
 # ---- 1) season data frames (safe joins, clean names) ----
 s.temp <- make_season_df(s.habitat, s.indices)

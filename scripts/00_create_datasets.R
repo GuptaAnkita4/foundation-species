@@ -1,4 +1,13 @@
 source(here::here("src/build_datasets.R"))
+source(here::here("src/load_data.R"))
+
+dat <- load_all_data()
+
+s.habitat <- dat$s.habitat
+s.indices <- dat$s.indices
+
+w.habitat <- dat$w.habitat
+w.indices <- dat$w.indices
 
 # 1) species–area
 s.sparea <- make_sparea(s.habitat, s.indices, area_mode = "x10_plus1")

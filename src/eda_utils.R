@@ -16,7 +16,7 @@ theme_min_clean <- function() {
 # join habitat + indices by grid, rename columns consistently
 make_season_df <- function(habitat, indices) {
   habitat %>%
-    dplyr::select(grid, wetlandTot, logArea, perWV, WVclass, size_class) %>%
+    dplyr::select(grid, wetlandTot, logArea, perWV, WVclass) %>%
     left_join(
       indices %>%
         dplyr::select(grid, richness, FRic, count) %>%
@@ -27,7 +27,6 @@ make_season_df <- function(habitat, indices) {
     filter(!is.na(area), area > 0) %>%
     mutate(
       WVclass   = as.factor(WVclass),
-      size_class = as.factor(size_class),
       logArea   = as.numeric(logArea),
       richness  = as.numeric(richness),
       fric      = as.numeric(fric),

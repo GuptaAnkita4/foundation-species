@@ -1,0 +1,35 @@
+== SUMMER ==
+
+	Kruskal-Wallis rank sum test
+
+data:  PropRich_2 by WVclass
+Kruskal-Wallis chi-squared = 3.4692, df = 2, p-value = 0.1765
+
+
+	Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  s.troph_metrics$PropRich_2 and s.troph_metrics$WVclass 
+
+       Low  Medium
+Medium 0.16 -     
+High   0.74 0.74  
+
+P value adjustment method: holm 
+
+== WINTER ==
+
+	Kruskal-Wallis rank sum test
+
+data:  PropRich_2 by WVclass
+Kruskal-Wallis chi-squared = 4.6422, df = 2, p-value = 0.09816
+
+
+	Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  w.troph_metrics$PropRich_2 and w.troph_metrics$WVclass 
+
+       Low  Medium
+Medium 0.34 -     
+High   0.13 0.40  
+
+P value adjustment method: holm 
