@@ -40,7 +40,7 @@ trophcount_labels <- c(
 )
 
 # ---------------------------------------------------------------------
-# Models
+# Models (NB2; unchanged)
 # ---------------------------------------------------------------------
 troph_rich_A.s <- glmmTMB(
   richness ~ logArea * factor(trophLevel) + (1|grid),
@@ -92,22 +92,95 @@ pred_rich_A.w  <- ggpredict(troph_rich_A.w,  terms = c("logArea", "trophLevel"),
 pred_count_A.s <- ggpredict(troph_count_A.s, terms = c("logArea", "trophLevel"), bias_correction = TRUE)
 pred_count_A.w <- ggpredict(troph_count_A.w, terms = c("logArea", "trophLevel"), bias_correction = TRUE)
 
+# Keep prediction groups as expected
 pred_rich_A.s$group  <- factor(pred_rich_A.s$group,  levels = c("richness_2","richness_3","richness_4"))
 pred_rich_A.w$group  <- factor(pred_rich_A.w$group,  levels = c("richness_2","richness_3","richness_4"))
 pred_count_A.s$group <- factor(pred_count_A.s$group, levels = c("count_2","count_3","count_4"))
 pred_count_A.w$group <- factor(pred_count_A.w$group, levels = c("count_2","count_3","count_4"))
 
-# Align factor levels in source frames (for plotting consistency)
-s.sparea.troph$trophLevel  <- factor(s.sparea.troph$trophLevel,  levels = levels(pred_rich_A.s$group))
-s.spcount.troph$trophLevel <- factor(s.spcount.troph$trophLevel, levels = levels(pred_count_A.s$group))
-w.sparea.troph$trophLevel  <- factor(w.sparea.troph$trophLevel,  levels = levels(pred_rich_A.w$group))
-w.spcount.troph$trophLevel <- factor(w.spcount.troph$trophLevel, levels = levels(pred_count_A.w$group))
+# ---------------------------------------------------------------------
+# Plot transforms: pure log for everything (models unchanged)
+# ---------------------------------------------------------------------
+EPS_RICH <- 0.5   # half-count for richness points
+EPS_CNT  <- 0.5   # half-count for abundance points
 
-# Axes limits shared across seasons for each response
-xlim_rich  <- range(c(pred_rich_A.s$x,  pred_rich_A.w$x),  na.rm = TRUE)
-ylim_rich  <- range(c(log(pred_rich_A.s$predicted), log(pred_rich_A.w$predicted)), na.rm = TRUE)
-xlim_abund <- range(c(pred_count_A.s$x, pred_count_A.w$x), na.rm = TRUE)
-ylim_abund <- range(c(log(pred_count_A.s$predicted), log(pred_count_A.w$predicted)), na.rm = TRUE)
+# points transform (avoid -Inf at zeros)
+tlog_point_rich <- function(y) log(pmax(y, EPS_RICH))
+tlog_point_cnt  <- function(y) log(pmax(y, EPS_CNT))
+
+# lines transform: log of predicted mean (no epsilon)
+tlog_line <- function(mu) log(mu)
+
+y_lab_rich  <- "log(Species Richness)"
+y_lab_abund <- "log(Abundance)"
+
+# ---------------------------------------------------------------------
+# Robust trophic mapping for points (fixes NA color issue)
+# ---------------------------------------------------------------------
+normalize_troph_code <- function(x) {
+  v  <- as.character(x)
+  n1 <- suppressWarnings(as.integer(v))
+  digits <- suppressWarnings(as.integer(gsub("\\D+", "", v)))
+  n2 <- ifelse(is.na(n1), digits, n1)
+  vt <- tolower(trimws(v))
+  n3 <- ifelse(is.na(n2) & grepl("primary",   vt), 2L, n2)
+  n3 <- ifelse(is.na(n3) & grepl("second",    vt), 3L, n3)
+  n3 <- ifelse(is.na(n3) & (grepl("top", vt) | grepl("carniv", vt) | grepl("pred", vt)), 4L, n3)
+  ifelse(n3 %in% c(2L,3L,4L), n3, NA_integer_)
+}
+
+mk_points_rich <- function(df) {
+  code <- normalize_troph_code(df$trophLevel)
+  df |>
+    mutate(
+      group  = factor(paste0("richness_", code),
+                      levels = c("richness_2","richness_3","richness_4")),
+      y_plot = tlog_point_rich(richness)
+    )
+}
+mk_points_cnt <- function(df) {
+  code <- normalize_troph_code(df$trophLevel)
+  df |>
+    mutate(
+      group  = factor(paste0("count_", code),
+                      levels = c("count_2","count_3","count_4")),
+      y_plot = tlog_point_cnt(count)
+    )
+}
+
+s.sparea.troph  <- mk_points_rich(s.sparea.troph)
+w.sparea.troph  <- mk_points_rich(w.sparea.troph)
+s.spcount.troph <- mk_points_cnt(s.spcount.troph)
+w.spcount.troph <- mk_points_cnt(w.spcount.troph)
+
+# Optional sanity check
+for (nm in c("s.sparea.troph","w.sparea.troph","s.spcount.troph","w.spcount.troph")) {
+  df <- get(nm)
+  if (any(is.na(df$group))) {
+    message("⚠ NA trophic group in ", nm, " ; unmapped trophLevel values: ",
+            paste(unique(df$trophLevel[is.na(df$group)]), collapse = ", "))
+  }
+}
+
+# ---------------------------------------------------------------------
+# Axes limits (include predictions + points under log transforms)
+# ---------------------------------------------------------------------
+xlim_rich  <- range(c(pred_rich_A.s$x,  pred_rich_A.w$x,
+                      s.sparea.troph$logArea, w.sparea.troph$logArea), na.rm = TRUE)
+xlim_abund <- range(c(pred_count_A.s$x, pred_count_A.w$x,
+                      s.spcount.troph$logArea, w.spcount.troph$logArea), na.rm = TRUE)
+
+ylim_rich  <- range(c(
+  tlog_line(pred_rich_A.s$predicted),
+  tlog_line(pred_rich_A.w$predicted),
+  s.sparea.troph$y_plot, w.sparea.troph$y_plot
+), na.rm = TRUE)
+
+ylim_abund <- range(c(
+  tlog_line(pred_count_A.s$predicted),
+  tlog_line(pred_count_A.w$predicted),
+  s.spcount.troph$y_plot, w.spcount.troph$y_plot
+), na.rm = TRUE)
 
 # ---------------------------------------------------------------------
 # Plot styling
@@ -130,48 +203,55 @@ custom_theme <- theme_bw(base_size = 12) +
 # ---------------------------------------------------------------------
 # Plots (AREA × trophic level): 2×2 (Summer/Winter × Richness/Abundance)
 # ---------------------------------------------------------------------
-# NOTE: Replace the annotation labels if you want data-driven p-values displayed.
-richWVtroph.s <- ggplot(pred_rich_A.s, aes(x = x, y = log(predicted), color = group)) +
+richWVtroph.s <- ggplot(pred_rich_A.s, aes(x = x, y = tlog_line(predicted), color = group)) +
   annotate("text",
            x = min(pred_rich_A.s$x, na.rm = TRUE) + 0.1 * diff(range(pred_rich_A.s$x, na.rm = TRUE)),
            y = min(ylim_rich) + 0.95 * diff(range(ylim_rich)),
            label = "p>0.05", size = 3, hjust = 0) +
+  # geom_point(data = s.sparea.troph, aes(x = logArea, y = y_plot, color = group),
+  #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Summer", x = "log2(Wetland Area)", y = "log(Species Richness)", color = "Trophic Level") +
-  scale_color_manual(values = okabe_ito, labels = trophrich_labels) +
+  labs(title = "Summer", x = "log2(Wetland Area)", y = y_lab_rich, color = "Trophic Level") +
+  scale_color_manual(values = okabe_ito, labels = trophrich_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_rich) + scale_y_continuous(limits = ylim_rich) +
   custom_theme
 
-richWVtroph.w <- ggplot(pred_rich_A.w, aes(x = x, y = log(predicted), color = group)) +
+richWVtroph.w <- ggplot(pred_rich_A.w, aes(x = x, y = tlog_line(predicted), color = group)) +
   annotate("text",
            x = min(pred_rich_A.w$x, na.rm = TRUE) + 0.1 * diff(range(pred_rich_A.w$x, na.rm = TRUE)),
            y = min(ylim_rich) + 0.95 * diff(range(ylim_rich)),
            label = "p<0.01", size = 3, hjust = 0) +
+  # geom_point(data = w.sparea.troph, aes(x = logArea, y = y_plot, color = group),
+  #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
   labs(title = "Winter", x = "log2(Wetland Area)", y = NULL, color = "Trophic Level") +
-  scale_color_manual(values = okabe_ito, labels = trophrich_labels) +
+  scale_color_manual(values = okabe_ito, labels = trophrich_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_rich) + scale_y_continuous(limits = ylim_rich) +
   custom_theme
 
-countWVtroph.s <- ggplot(pred_count_A.s, aes(x = x, y = log(predicted), color = group)) +
+countWVtroph.s <- ggplot(pred_count_A.s, aes(x = x, y = tlog_line(predicted), color = group)) +
   annotate("text",
            x = min(pred_count_A.s$x, na.rm = TRUE) + 0.1 * diff(range(pred_count_A.s$x, na.rm = TRUE)),
            y = min(ylim_abund) + 0.95 * diff(range(ylim_abund)),
            label = "p<0.001", size = 3, hjust = 0) +
+  # geom_point(data = s.spcount.troph, aes(x = logArea, y = y_plot, color = group),
+  #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Summer", x = "log2(Wetland Area)", y = "log(Abundance)", color = "Trophic Level") +
-  scale_color_manual(values = okabe_ito, labels = trophcount_labels) +
+  labs(title = "Summer", x = "log2(Wetland Area)", y = y_lab_abund, color = "Trophic Level") +
+  scale_color_manual(values = okabe_ito, labels = trophcount_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_abund) + scale_y_continuous(limits = ylim_abund) +
   custom_theme
 
-countWVtroph.w <- ggplot(pred_count_A.w, aes(x = x, y = log(predicted), color = group)) +
+countWVtroph.w <- ggplot(pred_count_A.w, aes(x = x, y = tlog_line(predicted), color = group)) +
   annotate("text",
            x = min(pred_count_A.w$x, na.rm = TRUE) + 0.1 * diff(range(pred_count_A.w$x, na.rm = TRUE)),
            y = min(ylim_abund) + 0.95 * diff(range(ylim_abund)),
            label = "p<0.01", size = 3, hjust = 0) +
+  # geom_point(data = w.spcount.troph, aes(x = logArea, y = y_plot, color = group),
+  #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
   labs(title = "Winter", x = "log2(Wetland Area)", y = NULL, color = "Trophic Level") +
-  scale_color_manual(values = okabe_ito, labels = trophcount_labels) +
+  scale_color_manual(values = okabe_ito, labels = trophcount_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_abund) + scale_y_continuous(limits = ylim_abund) +
   custom_theme
 
@@ -181,12 +261,11 @@ combined_plot <- (
   plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") +
   plot_annotation(tag_levels = 'a') &
   theme(
-    legend.position = "bottom",   # force to bottom
+    legend.position = "bottom",
     legend.direction = "horizontal",
     legend.title = element_text(size = 12),
     legend.text  = element_text(size = 11)
   )
-
 
 # Save figure to Figures/
 ggsave(here("Figures", "troph_A_combined_color.png"),
@@ -267,7 +346,7 @@ model_index <- dplyr::bind_rows(
   ))
 write_csv(model_index, file.path(OUT_DIR, "model_index_area_by_trophic.csv"))
 
-# Save prediction grids used in figure
+# Save prediction grids used in figure (original scale)
 write_csv(pred_rich_A.s,  file.path(OUT_DIR, "pred_rich_A_summer.csv"))
 write_csv(pred_rich_A.w,  file.path(OUT_DIR, "pred_rich_A_winter.csv"))
 write_csv(pred_count_A.s, file.path(OUT_DIR, "pred_count_A_summer.csv"))

@@ -1,0 +1,5 @@
+Chisq,Df,p_value,term,model
+14.41405753366047,1,1.4670308565561523e-4,(Intercept),winter_richness_logWV_by_troph
+32.44447146936141,1,1.2264737586084827e-8,logWV,winter_richness_logWV_by_troph
+81.62389489531151,2,1.8862377302423493e-18,factor(trophLevel),winter_richness_logWV_by_troph
+26.08848942524702,2,2.1625019149310734e-6,logWV:factor(trophLevel),winter_richness_logWV_by_troph

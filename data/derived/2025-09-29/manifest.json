@@ -1,0 +1,14 @@
+[
+  {
+    "file": "summer_trophic_metrics.csv",
+    "path": "C:/Users/ag401/Documents/GitHub/foundation-species/data/derived/2025-09-29/summer_trophic_metrics.csv",
+    "nrow": 207,
+    "ncol": 16
+  },
+  {
+    "file": "winter_trophic_metrics.csv",
+    "path": "C:/Users/ag401/Documents/GitHub/foundation-species/data/derived/2025-09-29/winter_trophic_metrics.csv",
+    "nrow": 210,
+    "ncol": 16
+  }
+]

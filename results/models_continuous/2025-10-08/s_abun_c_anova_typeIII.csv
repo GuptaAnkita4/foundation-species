@@ -1,0 +1,7 @@
+Chisq,Df,p_value,term,model
+27.136189443622154,1,1.8961492167293186e-7,(Intercept),summer_abundance_cont
+1.9322707337775892e-4,1,0.9889092717672826,logArea,summer_abundance_cont
+0.175109109739672,1,0.6756105308460253,perWV_sc,summer_abundance_cont
+0.0030449553243581473,1,0.9559941749820662,I(perWV_sc^2),summer_abundance_cont
+1.124193165758364,1,0.28901734518522243,logArea:perWV_sc,summer_abundance_cont
+0.2744360556558435,1,0.6003714324917313,logArea:I(perWV_sc^2),summer_abundance_cont

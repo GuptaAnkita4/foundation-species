@@ -1,0 +1,2 @@
+model,family,theta,logLik,AIC,BIC,nobs
+summer_count_logWV_by_troph,nbinom2,1.5014703371668625,-786.4442768586949,1588.8885537173899,1615.5503040635128,207

@@ -1,0 +1,2 @@
+model,family,theta,logLik,AIC,BIC,nobs
+summer_richness_cont,nbinom2,6210.4720922641645,-186.10401529251897,388.20803058503793,406.080882621816,69
