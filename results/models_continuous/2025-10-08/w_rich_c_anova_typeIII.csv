@@ -1,7 +1,0 @@
-Chisq,Df,p_value,term,model
-4.45958152927066,1,0.03470599884778666,(Intercept),winter_richness_cont
-3.2610873157241835,1,0.07094207173529336,logArea,winter_richness_cont
-4.043854849125226,1,0.04433244695958088,perWV_sc,winter_richness_cont
-4.302260696714108,1,0.0380617460075559,I(perWV_sc^2),winter_richness_cont
-0.6460107216835671,1,0.421542571876022,logArea:perWV_sc,winter_richness_cont
-0.9630919472784477,1,0.3264090914040135,logArea:I(perWV_sc^2),winter_richness_cont

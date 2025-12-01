@@ -1,2 +1,0 @@
-model,family,theta,logLik,AIC,BIC,nobs
-winter_count_logArea_by_troph,nbinom2,0.9609411557817357,-781.601107891417,1579.202215782834,1605.9790760285737,210

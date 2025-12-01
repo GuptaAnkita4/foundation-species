@@ -111,7 +111,7 @@ tlog_point_cnt  <- function(y) log(pmax(y, EPS_CNT))
 # lines transform: log of predicted mean (no epsilon)
 tlog_line <- function(mu) log(mu)
 
-y_lab_rich  <- "log(Species Richness)"
+y_lab_rich  <- "log(Richness)"
 y_lab_abund <- "log(Abundance)"
 
 # ---------------------------------------------------------------------
@@ -199,67 +199,88 @@ custom_theme <- theme_bw(base_size = 12) +
     legend.title = element_text(size = 12),
     legend.text  = element_text(size = 11)
   )
+# --- exact p to three decimals; show "<0.001" when tiny ---
+fmt_p3 <- function(p, thresh = 0.001) {
+  if (is.na(p)) return("p = NA")
+  if (p < thresh) return("p < 0.001")
+  paste0("p = ", sprintf("%.3f", p))
+}
+
+# --- get the p-value for logArea × trophic level (Type III Wald χ²) ---
+anova_p_label_troph <- function(mod) {
+  a <- car::Anova(mod, type = "III")
+  rn <- rownames(a)
+  idx <- grep("logArea:.*troph", rn)
+  if (!length(idx)) return("p = NA")
+  fmt_p3(a$`Pr(>Chisq)`[idx[1]])
+}
+lab_rich_s <- anova_p_label_troph(troph_rich_A.s)
+lab_rich_w <- anova_p_label_troph(troph_rich_A.w)
+lab_cnt_s  <- anova_p_label_troph(troph_count_A.s)
+lab_cnt_w  <- anova_p_label_troph(troph_count_A.w)
+tag_theme <- theme(
+  plot.tag = element_text(face = "bold", size = 12),
+  plot.tag.position = c(0.02, 0.98)
+)
+
 
 # ---------------------------------------------------------------------
 # Plots (AREA × trophic level): 2×2 (Summer/Winter × Richness/Abundance)
 # ---------------------------------------------------------------------
 richWVtroph.s <- ggplot(pred_rich_A.s, aes(x = x, y = tlog_line(predicted), color = group)) +
-  annotate("text",
-           x = min(pred_rich_A.s$x, na.rm = TRUE) + 0.1 * diff(range(pred_rich_A.s$x, na.rm = TRUE)),
-           y = min(ylim_rich) + 0.95 * diff(range(ylim_rich)),
-           label = "p>0.05", size = 3, hjust = 0) +
+  geom_text(
+    data = data.frame(x = -Inf, y = Inf, lab = lab_rich_s),
+    aes(x = x, y = y, label = lab),
+    inherit.aes = FALSE, hjust = -0.05, vjust = 2.2, size = 3.5
+  ) +
   # geom_point(data = s.sparea.troph, aes(x = logArea, y = y_plot, color = group),
   #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Summer", x = "log2(Wetland Area)", y = y_lab_rich, color = "Trophic Level") +
+  labs(title = "Summer", x = expression(log[2]("Wetland Area")), y = y_lab_rich, color = "Trophic Level") +
   scale_color_manual(values = okabe_ito, labels = trophrich_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_rich) + scale_y_continuous(limits = ylim_rich) +
-  custom_theme
+  custom_theme + labs(tag = "a") + tag_theme
 
 richWVtroph.w <- ggplot(pred_rich_A.w, aes(x = x, y = tlog_line(predicted), color = group)) +
-  annotate("text",
-           x = min(pred_rich_A.w$x, na.rm = TRUE) + 0.1 * diff(range(pred_rich_A.w$x, na.rm = TRUE)),
-           y = min(ylim_rich) + 0.95 * diff(range(ylim_rich)),
-           label = "p<0.01", size = 3, hjust = 0) +
+  geom_text(data = data.frame(x = -Inf, y = Inf, lab = lab_rich_w),
+            aes(x = x, y = y, label = lab), inherit.aes = FALSE,
+            hjust = -0.05, vjust = 2.2, size = 3.5) +
   # geom_point(data = w.sparea.troph, aes(x = logArea, y = y_plot, color = group),
   #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Winter", x = "log2(Wetland Area)", y = NULL, color = "Trophic Level") +
+  labs(title = "Winter", x = expression(log[2]("Wetland Area")), y = NULL, color = "Trophic Level") +
   scale_color_manual(values = okabe_ito, labels = trophrich_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_rich) + scale_y_continuous(limits = ylim_rich) +
-  custom_theme
+  custom_theme+ labs(tag = "b") + tag_theme
 
 countWVtroph.s <- ggplot(pred_count_A.s, aes(x = x, y = tlog_line(predicted), color = group)) +
-  annotate("text",
-           x = min(pred_count_A.s$x, na.rm = TRUE) + 0.1 * diff(range(pred_count_A.s$x, na.rm = TRUE)),
-           y = min(ylim_abund) + 0.95 * diff(range(ylim_abund)),
-           label = "p<0.001", size = 3, hjust = 0) +
+  geom_text(data = data.frame(x = -Inf, y = Inf, lab = lab_cnt_s),
+            aes(x = x, y = y, label = lab), inherit.aes = FALSE,
+            hjust = -0.05, vjust = 2.2, size = 3.5) +
   # geom_point(data = s.spcount.troph, aes(x = logArea, y = y_plot, color = group),
   #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Summer", x = "log2(Wetland Area)", y = y_lab_abund, color = "Trophic Level") +
+  labs(title = "Summer", x = expression(log[2]("Wetland Area")), y = y_lab_abund, color = "Trophic Level") +
   scale_color_manual(values = okabe_ito, labels = trophcount_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_abund) + scale_y_continuous(limits = ylim_abund) +
-  custom_theme
+  custom_theme+ labs(tag = "c") + tag_theme
 
 countWVtroph.w <- ggplot(pred_count_A.w, aes(x = x, y = tlog_line(predicted), color = group)) +
-  annotate("text",
-           x = min(pred_count_A.w$x, na.rm = TRUE) + 0.1 * diff(range(pred_count_A.w$x, na.rm = TRUE)),
-           y = min(ylim_abund) + 0.95 * diff(range(ylim_abund)),
-           label = "p<0.01", size = 3, hjust = 0) +
+  geom_text(data = data.frame(x = -Inf, y = Inf, lab = lab_cnt_w),
+            aes(x = x, y = y, label = lab), inherit.aes = FALSE,
+            hjust = -0.05, vjust = 2.2, size = 3.5) +
   # geom_point(data = w.spcount.troph, aes(x = logArea, y = y_plot, color = group),
   #            inherit.aes = FALSE, alpha = 0.45, size = 1.8, stroke = 0) +
   geom_line(linewidth = 1.1) +
-  labs(title = "Winter", x = "log2(Wetland Area)", y = NULL, color = "Trophic Level") +
+  labs(title = "Winter", x = expression(log[2]("Wetland Area")), y = NULL, color = "Trophic Level") +
   scale_color_manual(values = okabe_ito, labels = trophcount_labels, drop = FALSE, na.translate = FALSE) +
   scale_x_continuous(limits = xlim_abund) + scale_y_continuous(limits = ylim_abund) +
-  custom_theme
+  custom_theme+ labs(tag = "d") + tag_theme
 
 combined_plot <- (
   richWVtroph.s + richWVtroph.w + plot_spacer() + countWVtroph.s + countWVtroph.w
 ) +
-  plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") +
-  plot_annotation(tag_levels = 'a') &
+  plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") &
   theme(
     legend.position = "bottom",
     legend.direction = "horizontal",
@@ -267,9 +288,10 @@ combined_plot <- (
     legend.text  = element_text(size = 11)
   )
 
+
 # Save figure to Figures/
 ggsave(here("Figures", "troph_A_combined_color.png"),
-       combined_plot, width = 1400/120, height = 500/120, dpi = 120, units = "in")
+       combined_plot, width = 1400/120, height = 500/120, dpi = 300, units = "in")
 
 # ---------------------------------------------------------------------
 # Save outputs: coefficients, CIs, ANOVA, predictions, figure, models

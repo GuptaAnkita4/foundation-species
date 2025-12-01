@@ -82,13 +82,15 @@ make_trophic_dist <- function(habitat, indices) {
   warn_missing_keys(habitat$grid, indices$grid, "habitat", "indices")
   
   wide <- habitat %>%
-    select(grid, area = wetlandTot, logArea, logWV, perWV, WVclass) %>%
+    select(grid, area = wetlandTot, logArea, logWV, perWV, WVclass, change, changeSign) %>%
     mutate(
       area = num(area),
       logArea = num(logArea),
       logWV = num(logWV),
       perWV = num(perWV),
-      WVclass = as.factor(WVclass)
+      WVclass = as.factor(WVclass),
+      change = num(change),
+      changeSign = as.factor(changeSign)
     ) %>%
     left_join(
       indices %>%
@@ -170,7 +172,6 @@ make_functional_dat <- function(habitat, indices) {
   out <- habitat %>%
     select(grid, logArea, logOW, logWV, perWV, WVclass) %>%
     mutate(
-      grid = as.factor(grid),
       logArea = num(logArea),
       logOW = num(logOW),
       logWV = num(logWV),

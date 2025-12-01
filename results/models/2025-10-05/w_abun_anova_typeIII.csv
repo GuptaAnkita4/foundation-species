@@ -1,5 +1,0 @@
-Chisq,Df,p_value,term,model
-31.834194810222158,1,1.6791044798876277e-8,(Intercept),winter_abundance
-0.36836963156206887,1,0.5438943025282174,logArea,winter_abundance
-1.3180863334005795,2,0.5173461117314615,factor(WVclass),winter_abundance
-0.7449986499526916,2,0.6890101166558507,logArea:factor(WVclass),winter_abundance

@@ -47,19 +47,31 @@ fit_nb <- function(df, response) {
 predict_grid <- function(mod, df, term_name = "logArea") {
   stopifnot(term_name %in% names(df), "WVclass" %in% names(df), "grid" %in% names(df))
   xs     <- seq(min(df[[term_name]], na.rm = TRUE),
-                max(df[[term_name]], na.rm = TRUE),
-                length.out = 100)
+                max(df[[term_name]], na.rm = TRUE), length.out = 100)
   groups <- levels(factor(df$WVclass, levels = c("0","1","2")))
   newdata <- expand.grid(logArea = xs, WVclass = groups, KEEP.OUT.ATTRS = FALSE)
-  newdata$grid <- df$grid[1]  # dummy for excluding REs
-  pr <- predict(mod, newdata = newdata, type = "response", se.fit = TRUE, re.form = NA)
+  
+  # dummy RE to exclude random effects
+  newdata$grid <- df$grid[1]
+  
+  # predict on LINK scale, then transform (NB uses log link by default)
+  pr_link <- predict(mod, newdata = newdata, type = "link", se.fit = TRUE, re.form = NA)
+  eta  <- as.numeric(pr_link$fit)
+  se   <- as.numeric(pr_link$se.fit)
+  
+  mu      <- exp(eta)
+  mu_low  <- exp(eta - 1.96 * se)
+  mu_high <- exp(eta + 1.96 * se)
+  
   data.frame(
     x         = newdata[[term_name]],
-    predicted = as.numeric(pr$fit),
-    se        = as.numeric(pr$se.fit),
+    predicted = mu,
+    lower     = mu_low,
+    upper     = mu_high,
     group     = factor(newdata$WVclass, levels = c("0","1","2"))
   )
 }
+
 
 anova_sig_label <- function(mod) {
   a <- car::Anova(mod, type = "III")
@@ -67,6 +79,28 @@ anova_sig_label <- function(mod) {
   p <- if (length(term)) a$`Pr(>Chisq)`[term] else NA_real_
   if (is.na(p)) "p = NA" else if (p < 0.001) "p < 0.001" else if (p < 0.01) "p < 0.01" else if (p < 0.05) "p < 0.05" else "p > 0.05"
 }
+
+# --- exact p formatter (3 decimals; <0.001 threshold) ---
+fmt_p3 <- function(p, thresh = 0.001) {
+  if (is.na(p)) return("p = NA")
+  if (p < thresh) return("p < 0.001")
+  paste0("p = ", sprintf("%.3f", p))
+}
+
+# --- return exact interaction p-value text for annotation ---
+anova_sig_label <- function(mod) {
+  a <- car::Anova(mod, type = "III")
+  rn <- rownames(a)
+  term <- which(grepl("logArea:factor\\(WVclass\\)", rn))
+  if (!length(term)) return("p = NA")
+  fmt_p3(a$`Pr(>Chisq)`[term])
+}
+
+tag_theme <- theme(
+  plot.tag = element_text(face = "bold", size = 12),
+  plot.tag.position = c(0.02, 0.98)
+)
+
 
 diag_dharma <- function(mod, tag) {
   sim <- DHARMa::simulateResiduals(mod)
@@ -102,7 +136,7 @@ pred_count_w <- predict_grid(w_nb_count, w.glm.dat)
 lab_rich_w  <- anova_sig_label(w_nb_rich)
 lab_count_w <- anova_sig_label(w_nb_count)
 
-# ---------------------- Plotting (pure log everywhere) -----------------------
+# ---------------------- Plotting -----------------------
 make_wv_plot <- function(pred_data, obs_data, season_label, yvar_logcol,
                          annotation_text, ylab_text, xlims = NULL, ylims = NULL) {
   
@@ -118,7 +152,7 @@ make_wv_plot <- function(pred_data, obs_data, season_label, yvar_logcol,
   if (is.null(xlims)) xlims <- range(c(obs_data$logArea, pred_data$x), na.rm = TRUE)
   if (is.null(ylims)) ylims <- range(obs_data[[yvar_logcol]], na.rm = TRUE)
   
-  ggplot() +
+   ggplot() +
     # POINTS (observed; already on log scale)
     # geom_jitter(
     #   data = obs_data,
@@ -136,10 +170,21 @@ make_wv_plot <- function(pred_data, obs_data, season_label, yvar_logcol,
              y = min(ylims, na.rm = TRUE) + 0.95 * diff(range(ylims, na.rm = TRUE)),
              label = annotation_text, size = 4, hjust = 0
     ) +
-    scale_shape_manual(values = shape_vals, labels = wv_labels, name = "Points: % Wetland Vegetation") +
-    scale_fill_manual(values = fill_vals,  labels = wv_labels, name = "Points: % Wetland Vegetation") +
+     # --- CI ribbon (response -> log for plotting)
+     # geom_ribbon(
+     #   data = pred_data,
+     #   aes(x = x,
+     #       ymin = tlog_line(lower),
+     #       ymax = tlog_line(upper),
+     #       fill = line_group,
+     #       group = line_group),
+     #   alpha = 0.18,
+     #   inherit.aes = FALSE
+     # ) +
+   #  scale_shape_manual(values = shape_vals, labels = wv_labels, name = "Points: % Wetland Vegetation") +
+  #  scale_fill_manual(values = fill_vals,  labels = wv_labels, name = "Points: % Wetland Vegetation") +
     scale_color_manual(values = line_vals, labels = wv_labels, name = "% Wetland Vegetation") +
-    labs(title = season_label, x = "log2(Wetland Area)", y = ylab_text) +
+    labs(title = season_label, x = expression(log[2]("Wetland Area")), y = ylab_text) +
     scale_x_continuous(limits = xlims) +
     scale_y_continuous(limits = ylims) +
     theme_bw(base_size = 12) +
@@ -165,26 +210,26 @@ ylim_rich  <- range(c(s.glm.dat$log_rich, w.glm.dat$log_rich), na.rm = TRUE)
 xlim_abund <- xlim_rich
 ylim_abund <- range(c(s.glm.dat$log_abun, w.glm.dat$log_abun), na.rm = TRUE)
 
-p_a <- make_wv_plot(pred_rich_s,  s.glm.dat, "Summer", "log_rich", lab_rich_s,  "log(Richness)",  xlim_rich,  ylim_rich)
-p_b <- make_wv_plot(pred_rich_w,  w.glm.dat, "Winter", "log_rich", lab_rich_w,  "log(Richness)",  xlim_rich,  ylim_rich) + labs(y = NULL)
-p_c <- make_wv_plot(pred_count_s, s.glm.dat, "Summer", "log_abun", lab_count_s, "log(Abundance)", xlim_abund, ylim_abund)
-p_d <- make_wv_plot(pred_count_w, w.glm.dat, "Winter", "log_abun", lab_count_w, "log(Abundance)", xlim_abund, ylim_abund) + labs(y = NULL)
+p_a <- make_wv_plot(pred_rich_s,  s.glm.dat, "Summer", "log_rich",  lab_rich_s,  "log(Richness)",  xlim_rich,  ylim_rich)  + labs(tag = "a") + tag_theme
+p_b <- make_wv_plot(pred_rich_w,  w.glm.dat, "Winter", "log_rich",  lab_rich_w,  "log(Richness)",  xlim_rich,  ylim_rich)  + labs(y = NULL, tag = "b") + tag_theme
+p_c <- make_wv_plot(pred_count_s, s.glm.dat, "Summer", "log_abun", lab_count_s, "log(Abundance)", xlim_abund, ylim_abund) + labs(tag = "c") + tag_theme
+p_d <- make_wv_plot(pred_count_w, w.glm.dat, "Winter", "log_abun", lab_count_w, "log(Abundance)", xlim_abund, ylim_abund) + labs(y = NULL, tag = "d") + tag_theme
 
 combined_plot <- (
   (p_a + p_b + plot_spacer() + p_c + p_d) +
-    plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") +
-    plot_annotation(tag_levels = "a") &
-    theme(
-      legend.position = "bottom",
-      legend.title = element_text(size = 12),
-      legend.text  = element_text(size = 12)
-    ) &
-    guides(
-      color = guide_legend(nrow = 1),
-      fill  = guide_legend(nrow = 1),
-      shape = guide_legend(nrow = 1)
-    )
-)
+    plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect")
+) &
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    legend.text  = element_text(size = 12)
+  ) &
+  guides(
+    color = guide_legend(nrow = 1),
+    fill  = guide_legend(nrow = 1),
+    shape = guide_legend(nrow = 1)
+  )
+
 
 # Save outputs
 ggsave(here("Figures", "SAR_WV_combined_color.png"), combined_plot, width = 14, height = 5, dpi = 600)

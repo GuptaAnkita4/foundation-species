@@ -1,7 +1,0 @@
-Chisq,Df,p_value,term,model
-47.460879344490536,1,5.611265928575675e-12,(Intercept),summer_richness_cont
-0.3535379593605216,1,0.5521171774652645,logArea,summer_richness_cont
-0.020792259989922086,1,0.8853463194431184,perWV_sc,summer_richness_cont
-0.008937892997194906,1,0.9246798673630376,I(perWV_sc^2),summer_richness_cont
-2.081031557882424,1,0.1491393578889745,logArea:perWV_sc,summer_richness_cont
-1.2345147052240544,1,0.2665308286953895,logArea:I(perWV_sc^2),summer_richness_cont

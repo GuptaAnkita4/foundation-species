@@ -117,6 +117,27 @@ color_vals <- c("Small" = "#56B4E9", "Medium" = "#F0E442", "Large" = "#009E73")
 range_ric <- range(combined_pred %>% filter(metric == "Richness")  %>% pull(value), na.rm = TRUE)
 range_ab  <- range(combined_pred %>% filter(metric == "Abundance") %>% pull(value), na.rm = TRUE)
 
+# --- exact p to 3 decimals (with <0.001) ---
+fmt_p3 <- function(p, thresh = 0.001) {
+  if (is.na(p)) return("p = NA")
+  if (p < thresh) return("p < 0.001")
+  paste0("p = ", sprintf("%.3f", p))
+}
+
+# --- pull interaction p from a car::Anova table ---
+anova_p_label <- function(aov_obj, term = "logArea:perWV") {
+  tb <- as.data.frame(aov_obj)
+  tb$term <- rownames(aov_obj)
+  p <- tb$`Pr(>Chisq)`[match(term, tb$term)]
+  fmt_p3(p)
+}
+
+lab_s_ric <- anova_p_label(aov_s_ric)  # summer richness interaction p
+lab_s_ab  <- anova_p_label(aov_s_ab)   # summer abundance interaction p
+lab_w_ric <- anova_p_label(aov_w_ric)  # winter richness interaction p
+lab_w_ab  <- anova_p_label(aov_w_ab)   # winter abundance interaction p
+
+
 plot_metric_season <- function(df, metric_name, season_name) {
   df %>%
     filter(metric == metric_name, season == season_name) %>%
@@ -144,42 +165,55 @@ final_plot <- (p1 + p2) / (p3 + p4) + plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
 # Mean±SD ribbons
-plot_line_sd_metric <- function(df, metric_name, season_name) {
-  df %>%
-    filter(metric == metric_name, season == season_name) %>%
+plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
+  ylab_txt <- if (metric_name == "Richness") "log(Richness)" else "log(Abundance)"
+  g <- df %>%
+    dplyr::filter(metric == metric_name, season == season_name) %>%
     ggplot(aes(x = perWV, y = mean_value, color = area_bin, fill = area_bin)) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, color = NA) +
     geom_line(linewidth = 1.2) +
     scale_color_manual(values = color_vals) +
     scale_fill_manual(values = color_vals) +
-    labs(
-      x = "% Vegetation Cover",
-      y = if (metric_name == "Richness") "Log(Richness)" else "Log(Abundance)",
-      title = paste(season_name),
-      color = "Wetland Size", fill = "Wetland Size"
-    ) +
+    labs(x = "Vegetation cover (%)", y = ylab_txt,
+         title = season_name, color = "Wetland size", fill = "Wetland size") +
     theme_classic(base_size = 12) +
     theme(
       legend.position = "bottom",
-      plot.title = element_text(face = "bold", hjust = 0.5, size = 11)
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 11),
+      axis.title = element_text(size = 12),
+      axis.text  = element_text(size = 12)
     )
+  
+  if (!is.null(ann_text)) {
+    labdf <- data.frame(x = -Inf, y = Inf, label = ann_text)
+    g <- g + geom_text(data = labdf, aes(x = x, y = y, label = label),
+                       inherit.aes = FALSE, hjust = -0.05, vjust = 1.1, size = 4)
+  }
+  g
 }
+
+
 
 range_ric_ci <- range(line_summary_sd %>% filter(metric == "Richness")  %>% dplyr::select(lower, upper), na.rm = TRUE)
 range_ab_ci  <- range(line_summary_sd %>% filter(metric == "Abundance") %>% dplyr::select(lower, upper), na.rm = TRUE)
 
-q1 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Summer") + ylim(range_ric_ci)
-q2 <- plot_line_sd_metric(line_summary_sd, "Abundance", "Summer") + ylim(range_ab_ci)
-q3 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Winter")  + ylim(range_ric_ci)
-q4 <- plot_line_sd_metric(line_summary_sd, "Abundance", "Winter") + ylim(range_ab_ci)
+q1 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Summer", lab_s_ric) + ylim(range_ric_ci) + labs(tag = "a") + tag_theme
+q2 <- plot_line_sd_metric(line_summary_sd, "Abundance","Summer", lab_s_ab ) + ylim(range_ab_ci ) + labs(tag = "c") + tag_theme 
+q3 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Winter",  lab_w_ric) + ylim(range_ric_ci) + labs(tag = "b") + tag_theme + labs(y = NULL)
+q4 <- plot_line_sd_metric(line_summary_sd, "Abundance","Winter",  lab_w_ab ) + ylim(range_ab_ci ) + labs(tag = "d") + tag_theme  +labs(y = NULL)
 
-final_line_ci_plot <- ((q1 + q2) / (q3 + q4)) + plot_layout(guides = "collect") &
+
+one_row_ci <- (q1 + q3 + plot_spacer() + q2 + q4) +
+  plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") &
   theme(
     legend.position = "bottom",
     legend.title = element_text(size = 10),
     legend.text  = element_text(size = 9)
   )
 
+ggsave(here::here("Figures", "hotspots_ci_row.png"),
+       one_row_ci, width = 14, height = 5, dpi = 600)
+print(one_row_ci)
 # -----------------------------------------------------------------------------
 # Save outputs
 # -----------------------------------------------------------------------------
