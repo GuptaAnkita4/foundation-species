@@ -1,0 +1,5 @@
+Chisq,Df,p_value,term,model
+3.552719639591174,1,0.05944793859431908,(Intercept),summer_richness_logArea_by_troph
+21.04198683600899,1,4.493280640707932e-6,logArea,summer_richness_logArea_by_troph
+33.87184381258303,2,4.413900817767638e-8,factor(trophLevel),summer_richness_logArea_by_troph
+5.869296516847781,2,0.053149410876455895,logArea:factor(trophLevel),summer_richness_logArea_by_troph

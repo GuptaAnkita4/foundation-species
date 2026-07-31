@@ -1,0 +1,5 @@
+Chisq,Df,p_value,term,model
+49.70680192104218,1,1.785259173510011e-12,(Intercept),winter_richness
+2.801019440674365,1,0.09420439253539359,logArea,winter_richness
+0.8289327986559137,2,0.660692732748505,factor(WVclass),winter_richness
+1.6271741843806655,2,0.44326517795432513,logArea:factor(WVclass),winter_richness

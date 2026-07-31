@@ -1,0 +1,2 @@
+model,family,theta,logLik,AIC,BIC,nobs
+summer_abundance_cont,nbinom2,11939.037772134203,-340.0384141669958,696.0768283339916,713.9496803707697,69

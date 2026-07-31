@@ -1,0 +1,7 @@
+Chisq,Df,p_value,term,model
+14.398677853359366,1,1.4790612093520326e-4,(Intercept),winter_abundance_cont
+0.45576565328160584,1,0.4996095784053418,logArea,winter_abundance_cont
+0.038648720203034836,1,0.8441462229607521,perWV_sc,winter_abundance_cont
+0.20411618367539877,1,0.6514186960077992,I(perWV_sc^2),winter_abundance_cont
+1.0560444739976589,1,0.3041190855984874,logArea:perWV_sc,winter_abundance_cont
+0.46055849707114854,1,0.49736307446863914,logArea:I(perWV_sc^2),winter_abundance_cont

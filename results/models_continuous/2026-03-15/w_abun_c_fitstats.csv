@@ -1,0 +1,2 @@
+model,family,theta,logLik,AIC,BIC,nobs
+winter_abundance_cont,nbinom2,792.6034294398617,-351.23308953256355,718.4661790651271,736.454141001522,70
