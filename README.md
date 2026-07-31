@@ -1,9 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # Foundation species amplify biodiversity–area relationships and modify food-web structure in an aquatic ecosystem
 
 **R version:** 4.3.1\
