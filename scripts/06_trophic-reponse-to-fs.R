@@ -1,4 +1,3 @@
-# scripts/06_trophic-response-to-fs.R
 
 suppressPackageStartupMessages({
   library(here)
@@ -16,13 +15,14 @@ suppressPackageStartupMessages({
 
 dir.create(here("Figures"), showWarnings = FALSE, recursive = TRUE)
 
-# -----------------------------------------------------------------------------
-# Inputs: expect wide trophic tables:
-#   - s.troph.dist, w.troph.dist  (columns: grid, logArea, WVclass, richness_2/3/4, count_2/3/4, ...)
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
 
-# -----------------------------------------------------------------------------
-if (exists("s.troph") && is.list(s.troph) && "wide" %in% names(s.troph)) s.troph.dist <- s.troph$wide
-if (exists("w.troph") && is.list(w.troph) && "wide" %in% names(w.troph)) w.troph.dist <- w.troph$wide
+dat <- load_all_data()
+s.troph <- make_trophic_dist(dat$s.habitat, dat$s.indices)
+w.troph <- make_trophic_dist(dat$w.habitat, dat$w.indices)
+s.troph.dist <- s.troph$wide
+w.troph.dist <- w.troph$wide
 
 stopifnot(all(c("grid","logArea","WVclass","richness_2","richness_3","richness_4",
                 "count_2","count_3","count_4") %in% names(s.troph.dist)))
@@ -112,15 +112,15 @@ fmt_p3 <- function(p, thresh = 0.001) {
   paste0("p = ", sprintf("%.3f", p))
 }
 # --- area-effect (β, p) annotation, from the already-fitted GLM (presence)
-# or glmmTMB (abundance) models --
+# or glmmTMB (abundance) models
 area_effect_label_glm <- function(mod) {
   cf <- summary(mod)$coefficients
-  paste0("Area: \u03b2 = ", sprintf("%.2f", cf["logArea", "Estimate"]),
+  paste0("Area: β = ", sprintf("%.2f", cf["logArea", "Estimate"]),
          ", ", fmt_p3(cf["logArea", "Pr(>|z|)"]))
 }
 area_effect_label_tmb <- function(mod) {
   cf <- summary(mod)$coefficients$cond
-  paste0("Area: \u03b2 = ", sprintf("%.2f", cf["logArea", "Estimate"]),
+  paste0("Area: β = ", sprintf("%.2f", cf["logArea", "Estimate"]),
          ", ", fmt_p3(cf["logArea", "Pr(>|z|)"]))
 }
 
@@ -199,7 +199,6 @@ p1 <- ggplot(annot_s, aes(x = WVclass, y = predicted_prob, fill = WVclass)) +
               inherit.aes = FALSE, width = 0.15, alpha = 0.5, size = 1.2, height = 0.02,
               shape = 21, stroke = 0.6, fill = NA, color = "black") +
   scale_fill_manual(values = veg_colors) +
- 
   labs(x = "Vegetation Class", y = "Probability of presence", title = "Summer",
        subtitle = area_effect_label_glm(glm_herb_s)) +
   theme_minimal(base_size = 16) +

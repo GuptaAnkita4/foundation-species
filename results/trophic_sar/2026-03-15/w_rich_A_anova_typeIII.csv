@@ -1,5 +1,0 @@
-Chisq,Df,p_value,term,model
-9.224898648931841,1,0.0023874590939435424,(Intercept),winter_richness_logArea_by_troph
-18.08473382311606,1,2.1128870776409984e-5,logArea,winter_richness_logArea_by_troph
-53.011448410756984,2,3.08113153357998e-12,factor(trophLevel),winter_richness_logArea_by_troph
-16.745473904264465,2,2.31082226447803e-4,logArea:factor(trophLevel),winter_richness_logArea_by_troph

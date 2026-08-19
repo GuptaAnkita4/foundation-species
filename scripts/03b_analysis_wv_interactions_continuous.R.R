@@ -1,22 +1,17 @@
-# scripts/03b_analysis_wv_interactions_continuous.R
-
 suppressPackageStartupMessages({
   library(here); library(dplyr); library(ggplot2); library(readr)
   library(glmmTMB); library(ggeffects); library(car); library(DHARMa)
   library(patchwork); library(GGally); library(fs); library(purrr)
 })
-stopifnot(
-  "s.glm.dat/w.glm.dat not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
-    exists("s.glm.dat") && exists("w.glm.dat")
-)
+
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
+
+dat <- load_all_data()
+s.glm.dat <- make_glm_dat(dat$s.habitat, dat$s.indices, size_breaks = c(0, 2, Inf))
+w.glm.dat <- make_glm_dat(dat$w.habitat, dat$w.indices, size_breaks = c(0, 2, Inf))
 
 dir.create(here("Figures"), showWarnings = FALSE)
-
-# -----------------------------------------------------------------------------
-# Expect s.glm.dat and w.glm.dat already in memory with columns:
-# grid, logArea, perWV (0-100), WVclass, richness, abundance
-# This script uses perWV as CONTINUOUS. We scale it to 0-1 for stability.
-# -----------------------------------------------------------------------------
 
 EPS_RICH <- 0.5
 EPS_ABUN <- 0.5
@@ -145,7 +140,7 @@ make_cont_plot <- function(pred_data, obs_data, season_label, yvar_logcol, annot
                            ylab_text, xlims = NULL, ylims = NULL) {
   if (is.null(xlims)) xlims <- range(c(obs_data$logArea, pred_data$x), na.rm = TRUE)
   if (is.null(ylims)) ylims <- range(obs_data[[yvar_logcol]], na.rm = TRUE)
-  
+
   ggplot() +
     geom_line(data = pred_data,
               aes(x = x, y = tlog_line(predicted), color = cover_pct, group = cover_pct),
@@ -211,29 +206,29 @@ extract_glmmTMB <- function(mod, label) {
   sm  <- summary(mod)
   ll  <- as.numeric(logLik(mod))
   aic <- AIC(mod); bic <- BIC(mod); n <- stats::nobs(mod)
-  
+
   fam_obj  <- family(mod)
   fam_name <- if (is.list(fam_obj) && !is.null(fam_obj$family)) fam_obj$family else as.character(fam_obj)
-  
+
   cf <- as.data.frame(sm$coefficients$cond, stringsAsFactors = FALSE)
   cf$term <- rownames(cf); rownames(cf) <- NULL
   names(cf) <- c("estimate","std_error","z_value","p_value","term")
   cf <- dplyr::select(cf, term, estimate, std_error, z_value, p_value)
   cf$component <- "cond"; cf$model <- label
-  
+
   ci <- tryCatch({
     ci_m <- suppressMessages(confint(mod, parm = rownames(sm$coefficients$cond), method = "wald"))
     ci_df <- as.data.frame(ci_m); ci_df$term <- rownames(ci_m); rownames(ci_m) <- NULL
     names(ci_df)[1:2] <- c("conf_low","conf_high"); ci_df
   }, error = function(e) NULL)
   if (!is.null(ci)) cf <- dplyr::left_join(cf, ci, by = "term")
-  
+
   av <- tryCatch({
     a <- car::Anova(mod, type = "III")
     at <- as.data.frame(a); at$term <- rownames(at); rownames(at) <- NULL
     names(at) <- sub("Pr\\(>Chisq\\)", "p_value", names(at)); at$model <- label; at
   }, error = function(e) NULL)
-  
+
   fit <- dplyr::tibble(
     model   = label, family = fam_name, theta = sm$sigma,
     logLik  = ll, AIC = aic, BIC = bic, nobs = n
@@ -302,10 +297,10 @@ message("✅ Continuous-cover model outputs written to: ", OUT_DIR)
 # -----------------------------------------------------------------------------
 # (Optional) GAM sensitivity with smooth interaction surface
 # -----------------------------------------------------------------------------
-# 
-# suppressPackageStartupMessages(library(mgcv))
-# gam_rich_s <- mgcv::gam(richness ~ s(logArea, k=4) + s(perWV_sc, k=4) +
-#                           ti(logArea, perWV_sc, k=c(4,4)) + s(grid, bs="re"),
-#                         family = nb(), data = s.glm.dat)
-# summary(gam_rich_s); plot(gam_rich_s, pages=1)
-# ggeffects::ggpredict(gam_rich_s, terms = c("logArea","perWV_sc[0.1,0.3,0.5,0.7,0.9]"))
+
+suppressPackageStartupMessages(library(mgcv))
+gam_rich_s <- mgcv::gam(richness ~ s(logArea, k=4) + s(perWV_sc, k=4) +
+                          ti(logArea, perWV_sc, k=c(4,4)) + s(grid, bs="re"),
+                        family = nb(), data = s.glm.dat)
+summary(gam_rich_s); plot(gam_rich_s, pages=1)
+ggeffects::ggpredict(gam_rich_s, terms = c("logArea","perWV_sc[0.1,0.3,0.5,0.7,0.9]"))

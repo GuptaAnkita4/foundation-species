@@ -1,15 +1,16 @@
-# --- scripts/02_SAR_AAR.R ----------------------------------------------------
+# --- scripts/02_sar_aar.R ----------------------------------------------------
 
-pacman::p_load(
-  ggplot2, dplyr, readr, sars, patchwork,
-  here, fs, tibble
-)
+suppressPackageStartupMessages({
+  library(ggplot2); library(dplyr); library(readr); library(sars)
+  library(patchwork); library(here); library(fs); library(tibble)
+})
 
-stopifnot(
-  "s.sparea/w.sparea not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
-    exists("s.sparea") && exists("w.sparea")
-)
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
 
+dat <- load_all_data()
+s.sparea <- make_sparea(dat$s.habitat, dat$s.indices, area_mode = "x10_plus1")
+w.sparea <- make_sparea(dat$w.habitat, dat$w.indices, area_mode = "x10_plus1")
 
 ######################################################
 ##-------Testing Species-Area Relationships---------##
@@ -20,7 +21,7 @@ w.sar <- sar_power(as.matrix(w.sparea[, c("aT", "s")]))  # SAR
 w.aar <- sar_power(as.matrix(w.sparea[, c("aT", "a")]))  # AAR
 s.sar <- sar_power(as.matrix(s.sparea[, c("aT", "s")]))
 s.aar <- sar_power(as.matrix(s.sparea[, c("aT", "a")]))
-# (Summaries available via summary(...))
+# (Summaries via summary(...))
 
 # ---- Data prep for plotting (log₂ A on x; ln S on y) ----
 s.sparea <- as.data.frame(s.sparea)
@@ -46,8 +47,8 @@ c_w_sar <- w.sar$par[1]; z_w_sar <- w.sar$par[2]; p_w_sar <- w.sar$sigConf["z", 
 c_s_aar <- s.aar$par[1]; z_s_aar <- s.aar$par[2]; p_s_aar <- s.aar$sigConf["z", "Pr(>|t|)"]; r2_s_aar <- s.aar$R2
 c_w_aar <- w.aar$par[1]; z_w_aar <- w.aar$par[2]; p_w_aar <- w.aar$sigConf["z", "Pr(>|t|)"]; r2_w_aar <- w.aar$R2
 
-# ---- Predictions on log₂(A) axis ----
-# ln(S) = ln(c) + z * ln(2) * log2(A)
+# ---- Predictions on log₂(A) axis with CORRECT slope scaling ----
+# 🔧 ln(S) = ln(c) + z * ln(2) * log2(A)
 ln2 <- log(2)
 make_pred <- function(c_, z_, log2A_seq) {
   tibble(logArea = log2A_seq,
@@ -65,9 +66,6 @@ pred_s_aar <- make_pred(c_s_aar, z_s_aar, area_seq_s)
 pred_w_aar <- make_pred(c_w_aar, z_w_aar, area_seq_w)
 
 # ---- Optional: quick 95% CI ribbons via normal approx on (c, z) ----
-# If you have SEs for c and z, set them here (from your NLS summaries);
-# if not available, you can skip the ribbon or replace with bootstrap draws
-# from your preferred fitting that returns vcov.
 ci_ribbon <- function(c_, z_, log2A_seq, se_c = NA_real_, se_z = NA_real_, B = 1000L) {
   if (is.na(se_c) || is.na(se_z)) return(NULL)
   draws <- tibble(
@@ -94,8 +92,7 @@ ylim_abund <- range(c(s.sparea$logAbund, w.sparea$logAbund,
                       pred_s_aar$logPred, pred_w_aar$logPred), na.rm = TRUE)
 
 # ---- Theme + utils ----
-# Font sizes bumped up throughout (per Reviewer 1, Specific Comment S2: "all
-# figure fonts (axes, numbers, legends) need to be larger").
+
 okabe_ito <- c(blue = "#0072B2", vermillion = "#D55E00")
 my_theme <- theme_bw() +
   theme(panel.grid = element_blank(),
@@ -108,11 +105,11 @@ fmt_p3 <- function(p, thresh = 0.001) {
   if (p < thresh) return(paste0("<", format(thresh, nsmall = 3)))
   paste0("=", sprintf("%.3f", p))
 }
-# In-panel stats label: p-value (from sars::sar_power's NLS-based inference)
-# plus R2 (1 - RSS/TSS on the raw scale)
+
+
 lab_stats <- function(p, r2) {
   paste0("p", fmt_p3(p),
-         "\nR\u00b2 = ", sprintf("%.3f", r2))
+         "\nR² = ", sprintf("%.3f", r2))
 }
 ann_xy <- function(xlim, ylim) {
   list(x = min(xlim) + 0.02 * diff(xlim),
@@ -183,7 +180,7 @@ p4 <- p4 + labs(tag = "g") + tag_theme
 final_plot <- (p1 + p2 + plot_spacer() + p3 + p4) +
   plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1))
 
-#print(final_plot)
+print(final_plot)
 
 # ---- Save figure ----
 fs::dir_create(here::here("Figures"))

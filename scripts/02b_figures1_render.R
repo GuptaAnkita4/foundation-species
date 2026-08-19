@@ -2,6 +2,7 @@
 # Renders Figure S1 (supplement) as a standalone a-d tagged 4-panel figure,
 # reusing the exact SAR/AAR power-law analysis from scripts/02_SAR_AAR.R (Fig.
 # 1, panels d-g there). 
+
 suppressPackageStartupMessages({
   library(here); library(dplyr); library(ggplot2); library(patchwork); library(readr)
 })
@@ -15,9 +16,11 @@ find_latest_sar_aar_dir <- function() {
          "02 before 02b) to produce sar_aar_coefficients.csv and the prediction CSVs.",
          call. = FALSE)
   }
- 
-    sort(dirs, decreasing = TRUE)[1]
+
+  
+  sort(dirs, decreasing = TRUE)[1]
 }
+
 
 source(here::here("src/load_data.R"))
 source(here::here("src/build_datasets.R"))
@@ -33,8 +36,6 @@ s.sparea <- as.data.frame(s.sparea) %>%
 w.sparea <- as.data.frame(w.sparea) %>%
   dplyr::mutate(logArea = log2(aT), logRich = safe_log(s), logAbund = safe_log(a))
 
-# ---- cached model outputs (sars::sar_power fits) from the most recent
-# scripts/02_SAR_AAR.R run 
 sar_aar_dir <- find_latest_sar_aar_dir()
 coefs <- read_csv(file.path(sar_aar_dir, "sar_aar_coefficients.csv"), show_col_types = FALSE)
 getc <- function(model, col) coefs[[col]][coefs$model == model]
@@ -70,7 +71,7 @@ fmt_p3 <- function(p, thresh = 0.001) {
   paste0("=", sprintf("%.3f", p))
 }
 lab_stats <- function(p, r2) {
-  paste0("p", fmt_p3(p), "\nR\u00b2 = ", sprintf("%.3f", r2))
+  paste0("p", fmt_p3(p), "\nR² = ", sprintf("%.3f", r2))
 }
 ann_xy <- function(xlim, ylim) {
   list(x = min(xlim) + 0.02 * diff(xlim), y = max(ylim) - 0.02 * diff(ylim))
@@ -116,7 +117,6 @@ p4 <- ggplot(w.sparea, aes(x = logArea, y = logAbund)) +
   annotate("text", x = b2$x, y = b2$y, label = lab_stats(p_w_aar, r2_w_aar), hjust = 0, vjust = 1, size = 5) +
   my_theme
 
-# Standalone Figure S1 tags: a,b,c,d (not the main-text d-g continuation)
 p1 <- p1 + labs(tag = "a") + tag_theme
 p2 <- p2 + labs(tag = "b") + tag_theme
 p3 <- p3 + labs(tag = "c") + tag_theme

@@ -1,22 +1,26 @@
-# scripts/04_area-trophic-interaction.R
- suppressPackageStartupMessages({
+
+suppressPackageStartupMessages({
   library(here); library(dplyr); library(ggplot2)
   library(car); library(patchwork); library(glmmTMB); library(ggeffects)
   library(readr); library(fs); library(purrr)
 })
 
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
+
+dat <- load_all_data()
+s.troph.04 <- make_trophic_dist(dat$s.habitat, dat$s.indices)
+w.troph.04 <- make_trophic_dist(dat$w.habitat, dat$w.indices)
+s.sparea.troph  <- s.troph.04$richness
+w.sparea.troph  <- w.troph.04$richness
+s.spcount.troph <- s.troph.04$count
+w.spcount.troph <- w.troph.04$count
+
 # ---------------------------------------------------------------------
-# Preconditions (stop early if required columns missing)
+# Preconditions 
 # ---------------------------------------------------------------------
 need_rich_cols <- c("grid","logArea","logWV","trophLevel","richness")
 need_cnt_cols  <- c("grid","logArea","logWV","trophLevel","count")
-
-
-stopifnot(
-  "s.sparea.troph/w.sparea.troph/s.spcount.troph/w.spcount.troph not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
-    exists("s.sparea.troph") && exists("w.sparea.troph") &&
-    exists("s.spcount.troph") && exists("w.spcount.troph")
-)
 
 stopifnot(all(need_rich_cols %in% names(s.sparea.troph)))
 stopifnot(all(need_rich_cols %in% names(w.sparea.troph)))
@@ -45,7 +49,7 @@ s.spcount.troph$trophLevel <- factor(s.spcount.troph$trophLevel)
 w.spcount.troph$trophLevel <- factor(w.spcount.troph$trophLevel)
 
 # ---------------------------------------------------------------------
-# Models (NB2)
+# Models
 # ---------------------------------------------------------------------
 troph_rich_A.s <- glmmTMB(
   richness ~ logArea * trophLevel + (1|grid),
@@ -90,7 +94,7 @@ troph_count_WV.w <- glmmTMB(
 )
 
 # ---------------------------------------------------------------------
-# Predictions (AREA terms for the 2x2 figure)
+# Predictions
 # ---------------------------------------------------------------------
 pred_rich_A.s  <- ggpredict(troph_rich_A.s,  terms = c("logArea", "trophLevel"), bias_correction = TRUE)
 pred_rich_A.w  <- ggpredict(troph_rich_A.w,  terms = c("logArea", "trophLevel"), bias_correction = TRUE)
@@ -104,7 +108,7 @@ pred_count_A.s$group <- factor(pred_count_A.s$group, levels = c("count_2","count
 pred_count_A.w$group <- factor(pred_count_A.w$group, levels = c("count_2","count_3","count_4"))
 
 # ---------------------------------------------------------------------
-# Plot transforms: pure log for everything (models unchanged)
+# Plot transforms: pure log for everything
 # ---------------------------------------------------------------------
 EPS_RICH <- 0.5   # half-count for richness points
 EPS_CNT  <- 0.5   # half-count for abundance points
@@ -120,7 +124,7 @@ y_lab_rich  <- "log(Richness)"
 y_lab_abund <- "log(Abundance)"
 
 # ---------------------------------------------------------------------
-# Trophic mapping for points
+# Robust trophic mapping for points
 # ---------------------------------------------------------------------
 normalize_troph_code <- function(x) {
   v  <- as.character(x)
@@ -168,7 +172,7 @@ for (nm in c("s.sparea.troph","w.sparea.troph","s.spcount.troph","w.spcount.trop
 }
 
 # ---------------------------------------------------------------------
-# Axes limits (include predictions + points under log transforms)
+# Axes limits
 # ---------------------------------------------------------------------
 xlim_rich  <- range(c(pred_rich_A.s$x,  pred_rich_A.w$x,
                       s.sparea.troph$logArea, w.sparea.troph$logArea), na.rm = TRUE)
@@ -226,9 +230,8 @@ anova_p_label_troph <- function(mod) {
   fmt_p3(a$`Pr(>Chisq)`[idx[1]])
 }
 
-# --- Nakagawa's conditional R² (performance::r2_nakagawa), the R²-analog
-# added here alongside the interaction p-value 
-fmt_r2 <- function(r2) paste0("R\u00b2 = ", sprintf("%.3f", r2))
+# --- Nakagawa's conditional R² (performance::r2_nakagawa)
+fmt_r2 <- function(r2) paste0("R² = ", sprintf("%.3f", r2))
 nakagawa_r2 <- function(mod) {
   as.numeric(performance::r2_nakagawa(mod)$R2_conditional)
 }
@@ -303,11 +306,7 @@ combined_plot <- (
 
 
 # Save figure to Figures/
-# NOTE (2026-07-30): was width=1400/120 (~11.67in), height=500/120 (~4.17in)
-# -- same aspect ratio as Figs. 1/2/3 but a physically SMALLER canvas at the
-# same absolute font point sizes, so text occupied a visibly larger fraction
-# of this figure than the others. Matched to 14 x 5in (scripts 02/03/05) so
-# fonts read at a consistent size across all four main-text figures.
+
 ggsave(here("Figures", "troph_A_combined_color.png"),
        combined_plot, width = 14, height = 5, dpi = 600, units = "in")
 
@@ -318,25 +317,25 @@ extract_glmmTMB <- function(mod, label) {
   sm  <- summary(mod)
   ll  <- as.numeric(logLik(mod))
   aic <- AIC(mod); bic <- BIC(mod); n <- stats::nobs(mod)
-  
+
   cf <- as.data.frame(sm$coefficients$cond)
   cf$term <- rownames(cf); rownames(cf) <- NULL
   names(cf) <- c("estimate","std_error","z_value","p_value","term")
   cf <- dplyr::select(cf, term, estimate, std_error, z_value, p_value); cf$model <- label
-  
+
   ci <- tryCatch({
     ci_m <- suppressMessages(confint(mod, method = "wald"))
     out  <- as.data.frame(ci_m); out$term <- rownames(ci_m); rownames(ci_m) <- NULL
     names(out)[1:2] <- c("conf_low","conf_high"); out
   }, error = function(e) NULL)
   if (!is.null(ci)) cf <- dplyr::left_join(cf, ci, by = "term")
-  
+
   av <- tryCatch({
     a <- car::Anova(mod, type = "III")
     at <- as.data.frame(a); at$term <- rownames(at); rownames(at) <- NULL
     names(at) <- sub("Pr\\(>Chisq\\)", "p_value", names(at)); at$model <- label; at
   }, error = function(e) NULL)
-  
+
   fit <- tibble::tibble(
     model  = label,
     family = as.character(family(mod)$family),

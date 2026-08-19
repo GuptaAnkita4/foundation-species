@@ -1,2 +1,0 @@
-model,family,theta,logLik,AIC,BIC,nobs
-winter_richness_logArea_by_troph,nbinom2,76937.61853465998,-425.6676491972512,867.3352983945024,894.1121586402421,210

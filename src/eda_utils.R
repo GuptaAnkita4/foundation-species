@@ -13,7 +13,6 @@ theme_min_clean <- function() {
           legend.position = "bottom")
 }
 
-# join habitat + indices by grid, rename columns consistently
 make_season_df <- function(habitat, indices) {
   habitat %>%
     dplyr::select(grid, wetlandTot, logArea, perWV, WVclass) %>%
@@ -47,10 +46,10 @@ sum_abundance_by_traits <- function(comm_mat, species_info, season_label) {
   stopifnot(ncol(comm_mat) >= 2)
   # total individuals per species across all grids
   totals <- comm_mat %>%
-    dplyr::mutate(across(-1, ~ suppressWarnings(as.numeric(.x)))) %>%
-    dplyr::summarise(across(-1, ~ sum(.x, na.rm = TRUE))) %>%
-    tidyr::pivot_longer(everything(), names_to = "Code", values_to = "abundance")
-  
+    dplyr::mutate(dplyr::across(-1, ~ suppressWarnings(as.numeric(.x)))) %>%
+    dplyr::summarise(dplyr::across(-1, ~ sum(.x, na.rm = TRUE))) %>%
+    tidyr::pivot_longer(dplyr::everything(), names_to = "Code", values_to = "abundance")
+
   totals %>%
     dplyr::left_join(species_info, by = "Code") %>%
     dplyr::group_by(trophLevel, residentStat, .drop = FALSE) %>%

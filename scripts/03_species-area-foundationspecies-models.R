@@ -1,14 +1,15 @@
-
 suppressPackageStartupMessages({
   library(here); library(dplyr); library(ggplot2); library(readr)
   library(glmmTMB); library(car); library(DHARMa); library(patchwork)
   library(GGally); library(fs)
 })
 
-stopifnot(
-  "s.glm.dat/w.glm.dat not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
-    exists("s.glm.dat") && exists("w.glm.dat")
-)
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
+
+dat <- load_all_data()
+s.glm.dat <- make_glm_dat(dat$s.habitat, dat$s.indices, size_breaks = c(0, 2, Inf))
+w.glm.dat <- make_glm_dat(dat$w.habitat, dat$w.indices, size_breaks = c(0, 2, Inf))
 
 dir.create(here("Figures"), showWarnings = FALSE)
 
@@ -32,7 +33,7 @@ normalize_glm_dat <- function(df) {
 s.glm.dat <- normalize_glm_dat(s.glm.dat)
 w.glm.dat <- normalize_glm_dat(w.glm.dat)
 
-# quick pairplot
+# quick pairplot (optional)
 pairplot <- GGally::ggpairs(s.glm.dat[, c("logArea", "perWV", "richness", "abundance")])
 ggsave(here("Figures", "pairplot_summer.png"), pairplot, width = 8, height = 6, dpi = 300)
 
@@ -47,22 +48,21 @@ fit_nb <- function(df, response) {
 }
 
 predict_grid <- function(mod, df, term_name = "logArea") {
-  stopifnot(term_name %in% names(df), "WVclass" %in% names(df), "grid" %in% names(df))
+  stopifnot(term_name %in% names(df), "WVclass" %in% names(df))
   xs     <- seq(min(df[[term_name]], na.rm = TRUE),
                 max(df[[term_name]], na.rm = TRUE), length.out = 100)
   groups <- levels(factor(df$WVclass, levels = c("0","1","2")))
   newdata <- expand.grid(logArea = xs, WVclass = groups, KEEP.OUT.ATTRS = FALSE)
-  
-  
+
   # predict on LINK scale, then transform (NB uses log link by default)
-  pr_link <- predict(mod, newdata = newdata, type = "link", se.fit = TRUE, re.form = NA)
+  pr_link <- predict(mod, newdata = newdata, type = "link", se.fit = TRUE)
   eta  <- as.numeric(pr_link$fit)
   se   <- as.numeric(pr_link$se.fit)
-  
+
   mu      <- exp(eta)
   mu_low  <- exp(eta - 1.96 * se)
   mu_high <- exp(eta + 1.96 * se)
-  
+
   data.frame(
     x         = newdata[[term_name]],
     predicted = mu,
@@ -71,7 +71,6 @@ predict_grid <- function(mod, df, term_name = "logArea") {
     group     = factor(newdata$WVclass, levels = c("0","1","2"))
   )
 }
-
 
 # --- exact p formatter (3 decimals; <0.001 threshold) ---
 fmt_p3 <- function(p, thresh = 0.001) {
@@ -89,19 +88,19 @@ anova_sig_label <- function(mod) {
   fmt_p3(a$`Pr(>Chisq)`[term])
 }
 
+# --- McFadden pseudo-R2 (1 - logLik(model)/logLik(null))
 mcfadden_r2 <- function(mod, df, response) {
   null_form <- as.formula(paste0(response, " ~ 1"))
   null_mod <- glmmTMB::glmmTMB(null_form, data = df, family = nbinom2)
   1 - as.numeric(logLik(mod)) / as.numeric(logLik(null_mod))
 }
 
-fmt_r2 <- function(r2) paste0("R\u00b2 = ", sprintf("%.3f", r2))
+fmt_r2 <- function(r2) paste0("R² = ", sprintf("%.3f", r2))
 
 tag_theme <- theme(
   plot.tag = element_text(face = "bold", size = 18),
   plot.tag.position = c(0.02, 0.98)
 )
-
 
 diag_dharma <- function(mod, tag) {
   sim <- DHARMa::simulateResiduals(mod)
@@ -141,20 +140,20 @@ lab_count_w <- paste0(anova_sig_label(w_nb_count), "\n", fmt_r2(mcfadden_r2(w_nb
 # ---------------------- Plotting -----------------------
 make_wv_plot <- function(pred_data, obs_data, season_label, yvar_logcol,
                          annotation_text, ylab_text, xlims = NULL, ylims = NULL) {
-  
+
   pred_data <- as.data.frame(pred_data)
   pred_data$line_group <- factor(pred_data$group, levels = c("0","1","2"))
   obs_data$point_group <- factor(obs_data$WVclass, levels = c("0","1","2"))
-  
+
   fill_vals  <- c("0" = "#009E73", "1" = "#E69F00", "2" = "#CC79A7")
   shape_vals <- c("0" = 21, "1" = 22, "2" = 24)
   line_vals  <- c("0" = "#007256", "1" = "#B66F00", "2" = "#994C8D")
   wv_labels  <- c("Low (<30%)", "Medium (30-70%)", "High (>70%)")
-  
+
   if (is.null(xlims)) xlims <- range(c(obs_data$logArea, pred_data$x), na.rm = TRUE)
   if (is.null(ylims)) ylims <- range(obs_data[[yvar_logcol]], na.rm = TRUE)
-  
-  ggplot() +
+
+   ggplot() +
     # POINTS (observed; already on log scale)
     # geom_jitter(
     #   data = obs_data,
@@ -172,19 +171,19 @@ make_wv_plot <- function(pred_data, obs_data, season_label, yvar_logcol,
              y = min(ylims, na.rm = TRUE) + 0.92 * diff(range(ylims, na.rm = TRUE)),
              label = annotation_text, size = 5, hjust = 0, vjust = 1
     ) +
-    # --- CI ribbon (response -> log for plotting)
-    # geom_ribbon(
-    #   data = pred_data,
-    #   aes(x = x,
-    #       ymin = tlog_line(lower),
-    #       ymax = tlog_line(upper),
-    #       fill = line_group,
-    #       group = line_group),
-    #   alpha = 0.18,
-    #   inherit.aes = FALSE
-    # ) +
-    #  scale_shape_manual(values = shape_vals, labels = wv_labels, name = "Points: % Wetland Vegetation") +
-    #  scale_fill_manual(values = fill_vals,  labels = wv_labels, name = "Points: % Wetland Vegetation") +
+     # --- CI ribbon (response -> log for plotting)
+     # geom_ribbon(
+     #   data = pred_data,
+     #   aes(x = x,
+     #       ymin = tlog_line(lower),
+     #       ymax = tlog_line(upper),
+     #       fill = line_group,
+     #       group = line_group),
+     #   alpha = 0.18,
+     #   inherit.aes = FALSE
+     # ) +
+   #  scale_shape_manual(values = shape_vals, labels = wv_labels, name = "Points: % Wetland Vegetation") +
+  #  scale_fill_manual(values = fill_vals,  labels = wv_labels, name = "Points: % Wetland Vegetation") +
     scale_color_manual(values = line_vals, labels = wv_labels, name = "% Wetland Vegetation") +
     labs(title = season_label, x = expression(log[2]("Wetland Area")), y = ylab_text) +
     scale_x_continuous(limits = xlims) +
@@ -241,8 +240,6 @@ ggsave(here("Figures", "SAR_WV_winter.png"), p_b, width = 6, height = 5, dpi = 6
 print(combined_plot)
 
 # ---- SAVE MODEL OUTPUTS -----------------------------------------------------
-
-
 OUT_ROOT <- here::here("results", "models")
 STAMP    <- format(Sys.Date(), "%Y-%m-%d")
 OUT_DIR  <- file.path(OUT_ROOT, STAMP)
@@ -252,29 +249,29 @@ extract_glmmTMB <- function(mod, label) {
   sm  <- summary(mod)
   ll  <- as.numeric(logLik(mod))
   aic <- AIC(mod); bic <- BIC(mod); n <- stats::nobs(mod)
-  
+
   fam_obj  <- family(mod)
   fam_name <- if (is.list(fam_obj) && !is.null(fam_obj$family)) fam_obj$family else as.character(fam_obj)
-  
+
   cf <- as.data.frame(sm$coefficients$cond, stringsAsFactors = FALSE)
   cf$term <- rownames(cf); rownames(cf) <- NULL
   names(cf) <- c("estimate","std_error","z_value","p_value","term")
   cf <- dplyr::select(cf, term, estimate, std_error, z_value, p_value)
   cf$component <- "cond"; cf$model <- label
-  
+
   ci <- tryCatch({
     ci_m <- suppressMessages(confint(mod, parm = rownames(sm$coefficients$cond), method = "wald"))
     ci_df <- as.data.frame(ci_m); ci_df$term <- rownames(ci_m); rownames(ci_m) <- NULL
     names(ci_df)[1:2] <- c("conf_low","conf_high"); ci_df
   }, error = function(e) NULL)
   if (!is.null(ci)) cf <- dplyr::left_join(cf, ci, by = "term")
-  
+
   av <- tryCatch({
     a <- car::Anova(mod, type = "III")
     at <- as.data.frame(a); at$term <- rownames(at); rownames(at) <- NULL
     names(at) <- sub("Pr\\(>Chisq\\)", "p_value", names(at)); at$model <- label; at
   }, error = function(e) NULL)
-  
+
   fit <- dplyr::tibble(
     model   = label,
     family  = fam_name,

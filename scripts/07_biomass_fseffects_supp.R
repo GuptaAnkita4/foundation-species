@@ -1,4 +1,4 @@
-# --- scripts/07_biomass_fseffects_supp.R --------------------------------------------
+
 suppressPackageStartupMessages({
   library(glmmTMB)
   library(car)
@@ -9,12 +9,12 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
-# This script assumes s.spbio.troph/w.spbio.troph already exist in the
+source(here::here("src/load_data.R"))
+source(here::here("src/build_datasets.R"))
 
-stopifnot(
-  "s.spbio.troph/w.spbio.troph not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
-    exists("s.spbio.troph") && exists("w.spbio.troph")
-)
+dat <- load_all_data()
+s.spbio.troph <- make_trophic_dist(dat$s.habitat, dat$s.indices)$biomass
+w.spbio.troph <- make_trophic_dist(dat$w.habitat, dat$w.indices)$biomass
 
 # Output folders
 fs::dir_create(here::here("Figures"))
@@ -22,7 +22,6 @@ STAMP   <- format(Sys.Date(), "%Y-%m-%d")
 OUT_DIR <- here::here("results", "biomass_area_wv", STAMP)
 fs::dir_create(OUT_DIR, recurse = TRUE)
 
-# Requires glmmTMB::tweedie()
 
 # SUMMER
 m_biomass_s_tw <- glmmTMB(
@@ -48,7 +47,7 @@ pred_biomass_w_tw <- ggeffects::ggpredict(
   m_biomass_w_tw, terms = c("logArea","trophLevel")
 )
 
-# ---- Plots ------------------------
+# ---- Plots------------------------
 p_bio_s <- ggplot(as.data.frame(pred_biomass_s_tw),
                   aes(x = x, y = log(predicted), color = group)) +
   geom_line(linewidth = 1) +

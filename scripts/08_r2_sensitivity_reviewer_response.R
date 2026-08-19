@@ -1,13 +1,3 @@
-#!/usr/bin/env Rscript
-# ==============================================================================
-# Reviewer-requested analysis: R^2 reporting + grid-cell random-effect
-# sensitivity + leverage check on smallest wetlands.
-#
-# Addresses Reviewer 1: General Comment 4 (site-selection / random-effect /
-# leverage) and Specific Comment 9 (R^2 for GLMs/GLMMs, with vs without the
-# grid-cell random factor).
-
-# ==============================================================================
 suppressPackageStartupMessages({
   library(dplyr); library(tidyr); library(readr); library(glmmTMB)
   library(car); library(performance); library(insight); library(tibble)
@@ -30,11 +20,7 @@ s.sparea.troph <- s.troph$richness;  s.spcount.troph <- s.troph$count
 w.sparea.troph <- w.troph$richness;  w.spcount.troph <- w.troph$count
 
 # ------------------------------------------------------------------------
-# McFadden pseudo-R2: works for ANY model with a logLik method, with or
-# without random effects, any glmmTMB family -- this is what lets us make a
-# genuine apples-to-apples "with grid vs without grid" comparison, since
-# performance::r2_nakagawa() only works when the RE is well identified and
-# performance::r2() refuses nbinom2-without-RE glmmTMB objects outright.
+# McFadden pseudo-R2
 # ------------------------------------------------------------------------
 mcfadden_r2 <- function(mod, data, response, is_glmmTMB_re = FALSE) {
   null_form <- if (is_glmmTMB_re) as.formula(paste0(response, " ~ 1 + (1|grid)"))
@@ -143,8 +129,6 @@ print(as.data.frame(trophic_tab))
 
 # ==========================================================================
 # PART 3: Herbivore/omnivore/carnivore presence + abundance (script 06, Fig S3)
-# Original analysis NEVER includes a grid random effect. Confirm whether one
-# row per grid also applies here (it should, same wide table structure).
 # ==========================================================================
 cat("\n================ PART 3: PRESENCE/ABUNDANCE-BY-COVER MODELS (script 06 / Fig S3) ================\n")
 recode_wv <- function(x) {

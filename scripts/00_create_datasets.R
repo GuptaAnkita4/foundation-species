@@ -26,7 +26,7 @@ w.sparea.troph <- w.troph$richness
 w.spcount.troph <- w.troph$count
 w.spbio.troph  <- w.troph$biomass
 
-# 3) glm data with size classes (bin at 2 ha; adjust as needed)
+# 3) glm data with size classes (bin at 2 ha)
 s.glm.dat <- make_glm_dat(s.habitat, s.indices, size_breaks = c(0, 2, Inf))
 w.glm.dat <- make_glm_dat(w.habitat, w.indices, size_breaks = c(0, 2, Inf))
 
@@ -34,35 +34,33 @@ w.glm.dat <- make_glm_dat(w.habitat, w.indices, size_breaks = c(0, 2, Inf))
 s.f.dat <- make_functional_dat(s.habitat, s.indices)
 w.f.dat <- make_functional_dat(w.habitat, w.indices)
 
-# optional: relabel for plots on the fly
+# optional
 # s.glm.dat$WVclass <- label_wvclass(s.glm.dat$WVclass)
 # w.sparea.troph$trophLevel <- label_troph_rich(w.sparea.troph$trophLevel)
 # w.spcount.troph$trophLevel <- label_troph_count(w.spcount.troph$trophLevel)
 
 
-# saving these datasets for future use
+# save these datasets for future use
 suppressPackageStartupMessages({
   library(readr)
   library(fs)
   library(jsonlite)
 })
 
-# 1) choose an output folder (dated for versioning)
-OUT_ROOT <- here::here("Data/derived")
-STAMP    <- format(Sys.Date(), "%Y-%m-%d")  # e.g., 2025-09-18
+# 1) choose an output folder
+OUT_ROOT <- here::here("Data", "derived")
+STAMP    <- format(Sys.Date(), "%Y-%m-%d")
 OUT_DIR  <- file.path(OUT_ROOT, STAMP)
 dir_create(OUT_DIR, recurse = TRUE)
 
 # tiny helpers
 write_csv_safe <- function(x, path, ...) {
-  # ensure data.frame/tibble + no rownames
   if (!inherits(x, c("data.frame", "tbl_df"))) x <- as.data.frame(x)
   write_csv(x, path, na = "", ...)
 }
 
 write_matrix_wide <- function(mat_or_df, path, rowname_as = "grid") {
   df <- mat_or_df
-  # if object has rownames but no explicit grid column, promote rownames
   rn <- rownames(df)
   if (!is.null(rn) && !(rowname_as %in% names(df))) {
     df <- cbind(!!rowname_as := rn, df)
@@ -91,8 +89,7 @@ purrr::iwalk(files, function(x, item_name) {
   }
 })
 
-
-# 5) manifest (what was written + basic dims)
+# 5) simple manifest
 manifest <- tibble::tibble(
   file = basename(vapply(files, `[[`, "", "file")),
   path = normalizePath(vapply(files, `[[`, "", "file"), winslash = "/"),
@@ -102,6 +99,3 @@ manifest <- tibble::tibble(
 write_json(manifest, file.path(OUT_DIR, "manifest.json"), pretty = TRUE, auto_unbox = TRUE)
 
 message("✅ wrote derived datasets to: ", OUT_DIR)
-
-
-

@@ -1,4 +1,3 @@
-# --- scripts/05_fseffect_areaclass.R ------------------------------------------
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -42,7 +41,7 @@ OUT_DIR  <- here::here("results", "hotspots_area_veg", STAMP)
 fs::dir_create(OUT_DIR, recurse = TRUE)
 
 # -----------------------------------------------------------------------------
-# MODELS (no fric)
+# MODELS
 # -----------------------------------------------------------------------------
 ## Summer
 s.mod_hotspot.ric <- glmmTMB(richness  ~ logArea * perWV, family = nbinom2, data = s.glm.dat)
@@ -82,15 +81,15 @@ labels  <- c("Small", "Medium", "Large")
 
 s.pred_grid_binned <- s.pred_grid %>%
   dplyr::mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
-                season   = "Summer")
+         season   = "Summer")
 
 w.pred_grid_binned <- w.pred_grid %>%
   dplyr::mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
-                season   = "Winter")
+         season   = "Winter")
 
 combined_pred <- dplyr::bind_rows(s.pred_grid_binned, w.pred_grid_binned) %>%
   tidyr::pivot_longer(cols = c(pred_richness, pred_abundance),
-                      names_to = "metric", values_to = "value") %>%
+               names_to = "metric", values_to = "value") %>%
   dplyr::mutate(
     metric   = factor(metric, levels = c("pred_richness", "pred_abundance"),
                       labels = c("Richness", "Abundance")),
@@ -106,7 +105,7 @@ line_summary_sd <- combined_pred %>%
     .groups = "drop"
   ) %>%
   dplyr::mutate(lower = mean_value - sd,
-                upper = mean_value + sd)
+         upper = mean_value + sd)
 
 # -----------------------------------------------------------------------------
 # Plots
@@ -137,15 +136,13 @@ mcfadden_r2 <- function(mod, df, response) {
   null_mod <- glmmTMB::glmmTMB(null_form, data = df, family = nbinom2)
   1 - as.numeric(logLik(mod)) / as.numeric(logLik(null_mod))
 }
-fmt_r2 <- function(r2) paste0("R\u00b2 = ", sprintf("%.3f", r2))  # ² escape, not
-
+fmt_r2 <- function(r2) paste0("R² = ", sprintf("%.3f", r2))  # ² escape, not
 
 
 lab_s_ric <- paste0(anova_p_label(aov_s_ric), "\n", fmt_r2(mcfadden_r2(s.mod_hotspot.ric, s.glm.dat, "richness")))
 lab_s_ab  <- paste0(anova_p_label(aov_s_ab),  "\n", fmt_r2(mcfadden_r2(s.mod_hotspot.ab,  s.glm.dat, "abundance")))
 lab_w_ric <- paste0(anova_p_label(aov_w_ric), "\n", fmt_r2(mcfadden_r2(w.mod_hotspot.ric, w.glm.dat, "richness")))
 lab_w_ab  <- paste0(anova_p_label(aov_w_ab),  "\n", fmt_r2(mcfadden_r2(w.mod_hotspot.ab,  w.glm.dat, "abundance")))
-
 
 tag_theme <- theme(
   plot.tag = element_text(face = "bold", size = 18),
@@ -169,9 +166,6 @@ plot_metric_season <- function(df, metric_name, season_name) {
     )
 }
 
-# "many-lines" view -- an exploratory diagnostic (one line per simulated
-# wetland), NOT the captioned Fig. 3 (that's the mean±SD ribbon version
-# below, one_row_ci/hotspots_ci_row.png). 
 p1 <- plot_metric_season(combined_pred, "Richness",  "Summer") + ylim(range_ric)
 p2 <- plot_metric_season(combined_pred, "Abundance", "Summer") + ylim(range_ab)
 p3 <- plot_metric_season(combined_pred, "Richness",  "Winter") + ylim(range_ric)
@@ -180,9 +174,6 @@ p4 <- plot_metric_season(combined_pred, "Abundance", "Winter") + ylim(range_ab)
 final_plot <- (p1 + p2) / (p3 + p4) + plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
-# Mean±SD ribbons -- this is Fig. 3 (S2.3 area-class × vegetation-cover
-# interaction; caption: "Interactive effects of foundation species cover and
-# wetland area on waterbird richness and abundance").
 plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
   ylab_txt <- if (metric_name == "Richness") "log(Richness)" else "log(Abundance)"
   g <- df %>%
@@ -201,7 +192,7 @@ plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
       axis.title = element_text(size = 17),
       axis.text  = element_text(size = 16)
     )
-  
+
   if (!is.null(ann_text)) {
     labdf <- data.frame(x = -Inf, y = Inf, label = ann_text)
     g <- g + geom_text(data = labdf, aes(x = x, y = y, label = label),
@@ -210,13 +201,11 @@ plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
   g
 }
 
-
-
 range_ric_ci <- range(line_summary_sd %>% dplyr::filter(metric == "Richness")  %>% dplyr::select(lower, upper), na.rm = TRUE)
 range_ab_ci  <- range(line_summary_sd %>% dplyr::filter(metric == "Abundance") %>% dplyr::select(lower, upper), na.rm = TRUE)
 
 q1 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Summer", lab_s_ric) + ylim(range_ric_ci) + labs(tag = "a") + tag_theme
-q2 <- plot_line_sd_metric(line_summary_sd, "Abundance","Summer", lab_s_ab ) + ylim(range_ab_ci ) + labs(tag = "c") + tag_theme 
+q2 <- plot_line_sd_metric(line_summary_sd, "Abundance","Summer", lab_s_ab ) + ylim(range_ab_ci ) + labs(tag = "c") + tag_theme
 q3 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Winter",  lab_w_ric) + ylim(range_ric_ci) + labs(tag = "b") + tag_theme + labs(y = NULL)
 q4 <- plot_line_sd_metric(line_summary_sd, "Abundance","Winter",  lab_w_ab ) + ylim(range_ab_ci ) + labs(tag = "d") + tag_theme  +labs(y = NULL)
 

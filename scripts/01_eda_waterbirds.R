@@ -1,4 +1,3 @@
-# scripts/EDA_waterbirds.R
 suppressPackageStartupMessages({
   library(here)
   library(dplyr)
@@ -12,7 +11,8 @@ suppressPackageStartupMessages({
 OUT_DIR <- here("reports", "eda")
 dir.create(OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# ---- 0) quick base plots
+# ---- 0) quick base plots (optional) ----
+
 dat <- load_all_data()
 
 s.birds.ab <- dat$s.birds.ab
@@ -31,7 +31,7 @@ func.dat.diet <- dat$func.dat.diet
 s.temp <- make_season_df(s.habitat, s.indices)
 w.temp <- make_season_df(w.habitat, w.indices)
 
-# ---- 2) SAR plots (use log1p to handle zeros) ----
+# ---- 2) SAR plots (using log1p to handle zeros) ----
 p1 <- plot_scatter_loess(
   s.temp, area, richness,
   "Summer: Richness vs Area", "Wetland area (ha)", "Waterbird richness"
@@ -57,8 +57,6 @@ ggsave(filename = file.path(OUT_DIR, "SAR_plots_combined.png"),
        plot = sar_grid, width = 10, height = 8, dpi = 300)
 
 # ---- 3) species-level metadata (traits + residency) ----
-# Expect: waterbirds (species table with Code, residentStat)
-#         func.dat.diet (with Code, trophLevel)
 species_info <- waterbirds %>%
   dplyr::select(Code, residentStat) %>%
   dplyr::left_join(func.dat.diet %>% dplyr::select(Code, trophLevel), by = "Code") %>%
@@ -67,7 +65,6 @@ species_info <- waterbirds %>%
     residentStat = as.factor(residentStat)
   )
 
-# Sanity: ensure matrices’ species exist in species_info
 summer_species <- colnames(s.birds.ab)[-1]  # drop 'grid'
 winter_species <- colnames(w.birds.ab)[-1]
 missing_traits <- setdiff(union(summer_species, winter_species), species_info$Code)
@@ -76,9 +73,9 @@ if (length(missing_traits)) {
 }
 
 # ---- 4) counts of species by trophic level × residency × season ----
-combined_info <-  dplyr::bind_rows(
-  species_info %>%  dplyr::filter(Code %in% summer_species) %>%  dplyr::mutate(season = "Summer"),
-  species_info %>%  dplyr::filter(Code %in% winter_species) %>%  dplyr::mutate(season = "Winter")
+combined_info <- dplyr::bind_rows(
+  species_info %>% dplyr::filter(Code %in% summer_species) %>% dplyr::mutate(season = "Summer"),
+  species_info %>% dplyr::filter(Code %in% winter_species) %>% dplyr::mutate(season = "Winter")
 )
 
 summary_counts <- combined_info %>%
@@ -100,7 +97,7 @@ ggsave(file.path(OUT_DIR, "species_counts_by_traits.png"),
 # ---- 5) total abundance by trophic level × residency × season ----
 summer_counts <- sum_abundance_by_traits(s.birds.ab, species_info, "Summer")
 winter_counts <- sum_abundance_by_traits(w.birds.ab, species_info, "Winter")
-combined_counts <- bind_rows(summer_counts, winter_counts)
+combined_counts <- dplyr::bind_rows(summer_counts, winter_counts)
 
 print(combined_counts)
 
@@ -114,7 +111,7 @@ p_abund <- ggplot(combined_counts,
 ggsave(file.path(OUT_DIR, "abundance_by_traits.png"),
        p_abund, width = 9, height = 5, dpi = 300)
 
-# ---- 6) (optional) Proportions of nonbreeders per trophic level within season ----
+# ---- 6) Proportions of nonbreeders per trophic level within season ----
 props <- combined_info %>%
   dplyr::count(season, trophLevel, residentStat, name = "n_species") %>%
   dplyr::group_by(season, trophLevel) %>%

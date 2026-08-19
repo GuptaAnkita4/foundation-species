@@ -1,5 +1,0 @@
-Chisq,Df,p_value,term,model
-92.202376199456893,1,7.825075503624198e-22,(Intercept),summer_abundance
-0.8487031311587447,1,0.35691947470743823,logArea,summer_abundance
-11.930619224854738,2,0.0025662499414991547,factor(WVclass),summer_abundance
-14.22550961049073,2,8.146477023398957e-4,logArea:factor(WVclass),summer_abundance

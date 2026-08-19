@@ -1,4 +1,4 @@
-# src/build_datasets.R
+# src/R/build_datasets.R
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
@@ -44,13 +44,12 @@ warn_missing_keys <- function(lhs_keys, rhs_keys, lhs_name = "left", rhs_name = 
 
 # -----------------------------
 # 1) Basic species–area table
-#    (replicates your s.sparea / w.sparea)
 # -----------------------------
 make_sparea <- function(habitat, indices, area_mode = c("x10_plus1","none")) {
   area_mode <- match.arg(area_mode)
-  
+
   warn_missing_keys(habitat$grid, indices$grid, "habitat", "indices")
-  
+
   out <- habitat %>%
     dplyr::select(grid, wetlandTot, wetland, wetlandVegetation, perWV) %>%
     dplyr::mutate(
@@ -68,19 +67,18 @@ make_sparea <- function(habitat, indices, area_mode = c("x10_plus1","none")) {
     dplyr::mutate(
       s = num(s), a = num(a), d = num(d)
     ) %>%
-    dplyr::filter(!if_any(everything(), ~ is.na(.x)))
-  
-  # columns/ordering
-  out %>% select(grid, aT, aOW, aWV, perWV, s, a, d)
+    dplyr::filter(!dplyr::if_any(dplyr::everything(), ~ is.na(.x)))
+
+  # columns/ordering exactly like your original
+  out %>% dplyr::select(grid, aT, aOW, aWV, perWV, s, a, d)
 }
 
 # -----------------------------
 # 2) Trophic distribution wide + long
-#    (replicates w.troph.dist / s.troph.dist and long pivots)
 # -----------------------------
 make_trophic_dist <- function(habitat, indices) {
   warn_missing_keys(habitat$grid, indices$grid, "habitat", "indices")
-  
+
   wide <- habitat %>%
     dplyr::select(grid, area = wetlandTot, logArea, logWV, perWV, WVclass, change, changeSign) %>%
     dplyr::mutate(
@@ -106,13 +104,13 @@ make_trophic_dist <- function(habitat, indices) {
       by = "grid"
     ) %>%
     dplyr::mutate(
-      dplyr::across(starts_with("richness_"), num),
-      dplyr::across(starts_with("count_"), num),
-      dplyr::across(starts_with("biomass_"), num),
+      dplyr::across(dplyr::starts_with("richness_"), num),
+      dplyr::across(dplyr::starts_with("count_"), num),
+      dplyr::across(dplyr::starts_with("biomass_"), num),
       MeanTrophicLevel = num(MeanTrophicLevel)
     ) %>%
     dplyr::filter(!dplyr::if_any(dplyr::everything(), ~ is.na(.x)))
-  
+
   long_rich <- wide %>%
     tidyr::pivot_longer(dplyr::starts_with("richness_"),
                  names_to = "trophLevel", values_to = "richness")
@@ -122,7 +120,7 @@ make_trophic_dist <- function(habitat, indices) {
   long_biomass <- wide %>%
     tidyr::pivot_longer(dplyr::starts_with("biomass_"),
                  names_to = "trophLevel", values_to = "biomass")
-  
+
   list(wide = wide, richness = long_rich, count = long_count, biomass = long_biomass)
 }
 
@@ -132,13 +130,13 @@ make_trophic_dist <- function(habitat, indices) {
 make_glm_dat <- function(habitat, indices, size_breaks = c(0, 2, Inf),
                          size_labels = c("small", "large")) {
   warn_missing_keys(habitat$grid, indices$grid, "habitat", "indices")
-  
+
   habitat2 <- habitat %>%
     dplyr::mutate(
       size_class = cut(num(wetlandTot), breaks = size_breaks,
                        labels = size_labels, right = TRUE, include.lowest = TRUE)
     )
-  
+
   out <- habitat2 %>%
     dplyr::select(grid, logArea, perWV, WVclass, size_class) %>%
     dplyr::mutate(
@@ -155,15 +153,42 @@ make_glm_dat <- function(habitat, indices, size_breaks = c(0, 2, Inf),
                biomass = totalBiomass),
       by = "grid"
     ) %>%
-    dplyr::mutate(across(c(richness, abundance, biomass), num)) %>%
-    dplyr::filter(!if_any(everything(), ~ is.na(.x)))
-  
+    dplyr::mutate(dplyr::across(c(richness, abundance, biomass), num)) %>%
+    dplyr::filter(!dplyr::if_any(dplyr::everything(), ~ is.na(.x)))
+
   out %>% dplyr::select(grid, logArea, perWV, WVclass, size_class, richness, abundance, biomass)
 }
 
+# -----------------------------
+# 4) Functional diversity tables
+# -----------------------------
+make_functional_dat <- function(habitat, indices) {
+  warn_missing_keys(habitat$grid, indices$grid, "habitat", "indices")
+
+  out <- habitat %>%
+    dplyr::select(grid, logArea, logOW, logWV, perWV, WVclass) %>%
+    dplyr::mutate(
+      logArea = num(logArea),
+      logOW = num(logOW),
+      logWV = num(logWV),
+      perWV = num(perWV),
+      WVclass = as.factor(WVclass)
+    ) %>%
+    dplyr::left_join(
+      indices %>% dplyr::select(grid, fdiv = FDiv, fric = FRic, feve = FEve),
+      by = "grid"
+    ) %>%
+    dplyr::mutate(
+      dplyr::across(c(fdiv, fric, feve), num),
+      logFric = safe_log(fric)
+    ) %>%
+    dplyr::filter(!dplyr::if_any(dplyr::everything(), ~ is.na(.x)))
+
+  out %>% dplyr::select(grid, logArea, logOW, logWV, perWV, WVclass, fdiv, fric, feve, logFric)
+}
 
 # -----------------------------
-# 4) Factor label helpers for plotting
+# 5) Factor label helpers for plotting
 # -----------------------------
 label_wvclass <- function(x) forcats::fct_recode(as.factor(x), !!!wv_labels)
 label_troph_rich <- function(x) forcats::fct_recode(as.factor(x), !!!trophrich_labels)

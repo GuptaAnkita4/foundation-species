@@ -1,7 +1,4 @@
-# --- scripts/08_figureS2_size_veg_diversity.R --------------------------------
-# Builds Figure S2 (supplement): mean +/- SE species richness and abundance by
-# wetland size class (small/large) x FS-cover class (Low/Medium/High), summer
-# and winter. 
+
 suppressPackageStartupMessages({
   library(here); library(dplyr); library(ggplot2); library(patchwork); library(readr)
 })
