@@ -1,10 +1,9 @@
-# scripts/20_trophic_analysis.R
+# scripts/06_trophic-response-to-fs.R
+
 suppressPackageStartupMessages({
   library(here)
   library(dplyr)
-  library(tidyr)
   library(ggplot2)
-  library(ggpubr)
   library(emmeans)
   library(glmmTMB)
   library(multcomp)
@@ -20,8 +19,7 @@ dir.create(here("Figures"), showWarnings = FALSE, recursive = TRUE)
 # -----------------------------------------------------------------------------
 # Inputs: expect wide trophic tables:
 #   - s.troph.dist, w.troph.dist  (columns: grid, logArea, WVclass, richness_2/3/4, count_2/3/4, ...)
-# If you used our earlier helpers (make_trophic_dist), they live at s.troph$wide / w.troph$wide.
-# This makes it compatible with either.
+
 # -----------------------------------------------------------------------------
 if (exists("s.troph") && is.list(s.troph) && "wide" %in% names(s.troph)) s.troph.dist <- s.troph$wide
 if (exists("w.troph") && is.list(w.troph) && "wide" %in% names(w.troph)) w.troph.dist <- w.troph$wide
@@ -43,11 +41,11 @@ recode_wv <- function(x) {
 
 compute_trophic_metrics <- function(df) {
   df %>%
-    rowwise() %>%
-    mutate(
+    dplyr::rowwise() %>%
+    dplyr::mutate(
       TotalRichness       = richness_2 + richness_3 + richness_4,
       TotalAbundance      = count_2 + count_3 + count_4,
-      trophicRichness     = sum(c_across(c(richness_2, richness_3, richness_4)) > 0),
+      trophicRichness     = sum(dplyr::c_across(c(richness_2, richness_3, richness_4)) > 0),
       shannonRichnessTroph= vegan::diversity(c(richness_2, richness_3, richness_4), index = "shannon"),
       shannonAbundanceTroph= vegan::diversity(c(count_2, count_3, count_4), index = "shannon"),
       PropRich_2          = ifelse(TotalRichness > 0, richness_2/TotalRichness, NA_real_),
@@ -61,8 +59,20 @@ compute_trophic_metrics <- function(df) {
       Omnivore_present    = as.integer(count_3 > 0),
       Carnivore_present   = as.integer(count_4 > 0)
     ) %>%
-    ungroup() %>%
-    mutate(WVclass = recode_wv(WVclass))
+    dplyr::ungroup() %>%
+    dplyr::mutate(WVclass = recode_wv(WVclass))
+}
+
+confint_or_na <- function(mod, label, ...) {
+  tryCatch({
+    ci_m <- suppressMessages(confint(mod, ...))
+    ci_df <- as.data.frame(ci_m); ci_df$term <- rownames(ci_m); rownames(ci_m) <- NULL
+    names(ci_df)[1:2] <- c("conf_low","conf_high"); ci_df
+  }, error = function(e) {
+    message("  NOTE: confint() failed for model '", label, "' (", conditionMessage(e),
+            ") -- conf_low/conf_high will be NA for this model.")
+    data.frame(term = character(0), conf_low = numeric(0), conf_high = numeric(0))
+  })
 }
 
 tidy_glm <- function(mod, label) {
@@ -70,8 +80,7 @@ tidy_glm <- function(mod, label) {
   cf <- as.data.frame(sm$coefficients)
   cf$term <- rownames(cf); rownames(cf) <- NULL
   names(cf) <- c("estimate","std_error","z_value","p_value","term")
-  ci <- suppressMessages(as.data.frame(confint(mod)))
-  if (nrow(ci)) { ci$term <- rownames(ci); rownames(ci) <- NULL; names(ci)[1:2] <- c("conf_low","conf_high") }
+  ci <- confint_or_na(mod, label)
   out <- dplyr::left_join(cf, ci, by = "term")
   out$model <- label
   out
@@ -82,11 +91,7 @@ tidy_tmb <- function(mod, label) {
   cf <- as.data.frame(sm$coefficients$cond)
   cf$term <- rownames(cf); rownames(cf) <- NULL
   names(cf) <- c("estimate","std_error","z_value","p_value","term")
-  ci <- tryCatch({
-    ci_m <- suppressMessages(confint(mod, method = "wald"))
-    ci_df <- as.data.frame(ci_m); ci_df$term <- rownames(ci_m); rownames(ci_m) <- NULL
-    names(ci_df)[1:2] <- c("conf_low","conf_high"); ci_df
-  }, error = function(e) data.frame())
+  ci <- confint_or_na(mod, label, method = "wald")
   out <- dplyr::left_join(cf, ci, by = "term")
   out$model <- label
   out
@@ -94,6 +99,30 @@ tidy_tmb <- function(mod, label) {
 
 # Colors
 veg_colors <- c("Low"="#A8E6A3","Medium"="#4CAF50","High"="#2E7D32")
+
+tag_theme <- theme(
+  plot.tag = element_text(face = "bold", size = 18),
+  plot.tag.position = c(0.02, 0.98)
+)
+
+# --- exact p to three decimals; show "<0.001" when tiny ---
+fmt_p3 <- function(p, thresh = 0.001) {
+  if (is.na(p)) return("p = NA")
+  if (p < thresh) return("p < 0.001")
+  paste0("p = ", sprintf("%.3f", p))
+}
+# --- area-effect (β, p) annotation, from the already-fitted GLM (presence)
+# or glmmTMB (abundance) models --
+area_effect_label_glm <- function(mod) {
+  cf <- summary(mod)$coefficients
+  paste0("Area: \u03b2 = ", sprintf("%.2f", cf["logArea", "Estimate"]),
+         ", ", fmt_p3(cf["logArea", "Pr(>|z|)"]))
+}
+area_effect_label_tmb <- function(mod) {
+  cf <- summary(mod)$coefficients$cond
+  paste0("Area: \u03b2 = ", sprintf("%.2f", cf["logArea", "Estimate"]),
+         ", ", fmt_p3(cf["logArea", "Pr(>|z|)"]))
+}
 
 # -----------------------------------------------------------------------------
 # Build metrics
@@ -165,55 +194,68 @@ annot_abund_w <- merge(newdata_w, cld_abund_w[, c("WVclass",".group")], by = "WV
 # -----------------------------------------------------------------------------
 p1 <- ggplot(annot_s, aes(x = WVclass, y = predicted_prob, fill = WVclass)) +
   geom_col(width = 0.6) +
-  geom_text(aes(label = .group, y = pmax(predicted_prob - 0.05, 0.02)), size = 4) +
+  geom_text(aes(label = .group, y = pmax(predicted_prob - 0.05, 0.02)), size = 5) +
   geom_jitter(data = s.troph_metrics, aes(x = WVclass, y = Herbivore_present),
               inherit.aes = FALSE, width = 0.15, alpha = 0.5, size = 1.2, height = 0.02,
               shape = 21, stroke = 0.6, fill = NA, color = "black") +
   scale_fill_manual(values = veg_colors) +
-  labs(x = "Vegetation Class", y = "Predicted Probability") +
-  theme_minimal(base_size = 12) +
+ 
+  labs(x = "Vegetation Class", y = "Probability of presence", title = "Summer",
+       subtitle = area_effect_label_glm(glm_herb_s)) +
+  theme_minimal(base_size = 16) +
   ylim(0, 1) +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 13, hjust = 0.5)) +
+  labs(tag = "a") + tag_theme
 
 p2 <- ggplot(annot_w, aes(x = WVclass, y = predicted_prob, fill = WVclass)) +
   geom_col(width = 0.6) +
-  geom_text(aes(label = .group, y = pmax(predicted_prob - 0.05, 0.02)), size = 4) +
+  geom_text(aes(label = .group, y = pmax(predicted_prob - 0.05, 0.02)), size = 5) +
   geom_jitter(data = w.troph_metrics, aes(x = WVclass, y = Herbivore_present),
               inherit.aes = FALSE, width = 0.15, alpha = 0.5, size = 1.2, height = 0.02,
               shape = 21, stroke = 0.6, fill = NA, color = "black") +
   scale_fill_manual(values = veg_colors) +
-  labs(x = "Vegetation Class", y = "Predicted Probability") +
-  theme_minimal(base_size = 12) +
+  labs(x = "Vegetation Class", y = NULL, title = "Winter",
+       subtitle = area_effect_label_glm(glm_herb_w)) +
+  theme_minimal(base_size = 16) +
   ylim(0, 1) +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 13, hjust = 0.5)) +
+  labs(tag = "b") + tag_theme
 
 common_ymax <- max(c(w.troph_metrics$count_2, s.troph_metrics$count_2), na.rm = TRUE) + 1
 
 p3 <- ggplot(annot_abund_s, aes(x = WVclass, y = predicted_abundance, fill = WVclass)) +
   geom_col(width = 0.6) +
   geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.08) +
-  geom_text(aes(label = .group, y = upper_CI + 0.05*common_ymax), size = 4) +
+  geom_text(aes(label = .group, y = upper_CI + 0.05*common_ymax), size = 5) +
   geom_jitter(data = s.troph_metrics, aes(x = WVclass, y = count_2),
               inherit.aes = FALSE, width = 0.15, alpha = 0.5, size = 1.2,
               shape = 21, stroke = 0.6, fill = NA, color = "black") +
   scale_fill_manual(values = veg_colors) +
-  labs(x = "Vegetation Class", y = "Abundance") +
-  theme_minimal(base_size = 12) +
+  labs(x = "Vegetation Class", y = "Abundance",
+       subtitle = area_effect_label_tmb(nb_herb_s)) +
+  theme_minimal(base_size = 16) +
   ylim(0, common_ymax) +
-  theme(legend.position = "none")
+  theme(legend.position = "none", plot.subtitle = element_text(size = 13, hjust = 0.5)) +
+  labs(tag = "c") + tag_theme
 
 p4 <- ggplot(annot_abund_w, aes(x = WVclass, y = predicted_abundance, fill = WVclass)) +
   geom_col(width = 0.6) +
   geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.08) +
-  geom_text(aes(label = .group, y = upper_CI + 0.05*common_ymax), size = 4) +
+  geom_text(aes(label = .group, y = upper_CI + 0.05*common_ymax), size = 5) +
   geom_jitter(data = w.troph_metrics, aes(x = WVclass, y = count_2),
               inherit.aes = FALSE, width = 0.15, alpha = 0.5, size = 1.2,
               shape = 21, stroke = 0.6, fill = NA, color = "black") +
   scale_fill_manual(values = veg_colors) +
-  labs(x = "Vegetation Class", y = "Abundance") +
-  theme_minimal(base_size = 12) +
+  labs(x = "Vegetation Class", y = NULL,
+       subtitle = area_effect_label_tmb(nb_herb_w)) +
+  theme_minimal(base_size = 16) +
   ylim(0, common_ymax) +
-  theme(legend.position = "none")
+  theme(legend.position = "none", plot.subtitle = element_text(size = 13, hjust = 0.5)) +
+  labs(tag = "d") + tag_theme
 
 final_plot <- (p1 + p2) / (p3 + p4)
 ggsave(here("Figures", "Herbivore_Presence_Abundance.png"),
@@ -242,8 +284,8 @@ newdata_w_omn <- data.frame(WVclass = factor(c("Low","Medium","High"), levels = 
 newdata_s_omn$predicted_prob <- predict(glm_omn_s, newdata = newdata_s_omn, type = "response")
 newdata_w_omn$predicted_prob <- predict(glm_omn_w, newdata = newdata_w_omn, type = "response")
 
-cld_omn_s <- cld(emmeans(glm_omn_s, ~ WVclass), adjust = "tukey", Letters = letters)
-cld_omn_w <- cld(emmeans(glm_omn_w, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_omn_s <- multcomp::cld(emmeans::emmeans(glm_omn_s, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_omn_w <- multcomp::cld(emmeans::emmeans(glm_omn_w, ~ WVclass), adjust = "tukey", Letters = letters)
 cld_omn_s$WVclass <- as.character(cld_omn_s$WVclass)
 cld_omn_w$WVclass <- as.character(cld_omn_w$WVclass)
 
@@ -261,8 +303,8 @@ newdata_w_omn$predicted_abundance <- pred_w_omn$fit
 newdata_w_omn$lower_CI <- pmax(pred_w_omn$fit - 1.96 * pred_w_omn$se.fit, 0)
 newdata_w_omn$upper_CI <- pred_w_omn$fit + 1.96 * pred_w_omn$se.fit
 
-cld_abund_omn_s <- cld(emmeans(nb_omn_s, ~ WVclass), adjust = "tukey", Letters = letters)
-cld_abund_omn_w <- cld(emmeans(nb_omn_w, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_abund_omn_s <- multcomp::cld(emmeans::emmeans(nb_omn_s, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_abund_omn_w <- multcomp::cld(emmeans::emmeans(nb_omn_w, ~ WVclass), adjust = "tukey", Letters = letters)
 cld_abund_omn_s$WVclass <- as.character(cld_abund_omn_s$WVclass)
 cld_abund_omn_w$WVclass <- as.character(cld_abund_omn_w$WVclass)
 
@@ -332,8 +374,8 @@ newdata_w_car <- data.frame(WVclass = factor(c("Low","Medium","High"), levels = 
 newdata_s_car$predicted_prob <- predict(glm_carn_s, newdata = newdata_s_car, type = "response")
 newdata_w_car$predicted_prob <- predict(glm_carn_w, newdata = newdata_w_car, type = "response")
 
-cld_carn_s <- cld(emmeans(glm_carn_s, ~ WVclass), adjust = "tukey", Letters = letters)
-cld_carn_w <- cld(emmeans(glm_carn_w, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_carn_s <- multcomp::cld(emmeans::emmeans(glm_carn_s, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_carn_w <- multcomp::cld(emmeans::emmeans(glm_carn_w, ~ WVclass), adjust = "tukey", Letters = letters)
 cld_carn_s$WVclass <- as.character(cld_carn_s$WVclass)
 cld_carn_w$WVclass <- as.character(cld_carn_w$WVclass)
 
@@ -351,8 +393,8 @@ newdata_w_car$predicted_abundance <- pred_w_car$fit
 newdata_w_car$lower_CI <- pmax(pred_w_car$fit - 1.96 * pred_w_car$se.fit, 0)
 newdata_w_car$upper_CI <- pred_w_car$fit + 1.96 * pred_w_car$se.fit
 
-cld_abund_carn_s <- cld(emmeans(nb_carn_s, ~ WVclass), adjust = "tukey", Letters = letters)
-cld_abund_carn_w <- cld(emmeans(nb_carn_w, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_abund_carn_s <- multcomp::cld(emmeans::emmeans(nb_carn_s, ~ WVclass), adjust = "tukey", Letters = letters)
+cld_abund_carn_w <- multcomp::cld(emmeans::emmeans(nb_carn_w, ~ WVclass), adjust = "tukey", Letters = letters)
 cld_abund_carn_s$WVclass <- as.character(cld_abund_carn_s$WVclass)
 cld_abund_carn_w$WVclass <- as.character(cld_abund_carn_w$WVclass)
 
@@ -423,7 +465,7 @@ write_csv(s.troph_metrics, file.path(OUT_DIR, "summer_trophic_metrics.csv"))
 write_csv(w.troph_metrics, file.path(OUT_DIR, "winter_trophic_metrics.csv"))
 
 # model tables
-glm_tables <- bind_rows(
+glm_tables <- dplyr::bind_rows(
   tidy_glm(glm_herb_s, "summer_herbivore_presence"),
   tidy_glm(glm_omn_s,  "summer_omnivore_presence"),
   tidy_glm(glm_carn_s, "summer_carnivore_presence"),
@@ -433,7 +475,7 @@ glm_tables <- bind_rows(
 )
 write_csv(glm_tables, file.path(OUT_DIR, "glm_presence_coefficients.csv"))
 
-tmb_tables <- bind_rows(
+tmb_tables <- dplyr::bind_rows(
   tidy_tmb(nb_herb_s, "summer_herbivore_abundance"),
   tidy_tmb(nb_omn_s,  "summer_omnivore_abundance"),
   tidy_tmb(nb_carn_s, "summer_carnivore_abundance"),
@@ -444,13 +486,13 @@ tmb_tables <- bind_rows(
 write_csv(tmb_tables, file.path(OUT_DIR, "glmmTMB_abundance_coefficients.csv"))
 
 # anova (GLM, Type II by default here)
-glm_anova <- bind_rows(
-  {a<-anova(glm_herb_s, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="summer_herbivore_presence")},
-  {a<-anova(glm_omn_s,  test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="summer_omnivore_presence")},
-  {a<-anova(glm_carn_s, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="summer_carnivore_presence")},
-  {a<-anova(glm_herb_w, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="winter_herbivore_presence")},
-  {a<-anova(glm_omn_w,  test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="winter_omnivore_presence")},
-  {a<-anova(glm_carn_w, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% mutate(model="winter_carnivore_presence")}
+glm_anova <- dplyr::bind_rows(
+  {a<-anova(glm_herb_s, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="summer_herbivore_presence")},
+  {a<-anova(glm_omn_s,  test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="summer_omnivore_presence")},
+  {a<-anova(glm_carn_s, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="summer_carnivore_presence")},
+  {a<-anova(glm_herb_w, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="winter_herbivore_presence")},
+  {a<-anova(glm_omn_w,  test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="winter_omnivore_presence")},
+  {a<-anova(glm_carn_w, test="Chisq"); tibble::as_tibble(cbind(term=rownames(a), a), .name_repair="minimal") %>% dplyr::mutate(model="winter_carnivore_presence")}
 )
 write_csv(glm_anova, file.path(OUT_DIR, "glm_presence_anova.csv"))
 
@@ -512,4 +554,3 @@ ggsave(file.path(OUT_DIR, "Carnivore_Presence_Abundance.png"),
        final_plot_carn_combined, width = 7, height = 6, dpi = 600)
 
 message("✅ Trophic analysis complete. Results in: ", OUT_DIR)
-

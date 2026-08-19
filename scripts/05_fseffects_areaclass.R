@@ -1,12 +1,11 @@
-# --- scripts/13_hotspots_area_veg.R ------------------------------------------
+# --- scripts/05_fseffect_areaclass.R ------------------------------------------
+
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(ggplot2)
   library(patchwork)
   library(car)
-  library(emmeans)
-  library(multcompView)
   library(glmmTMB)
   library(here)
   library(fs)
@@ -14,7 +13,7 @@ suppressPackageStartupMessages({
 })
 
 # -----------------------------------------------------------------------------
-# Load data & helper to build GLM-ready frames (no FRic)
+# Load data & helper to build GLM-ready frames
 # -----------------------------------------------------------------------------
 source(here::here("src/load_data.R"))
 
@@ -23,8 +22,8 @@ make_glm_df <- function(habitat, indices) {
   stopifnot(all(c("grid","richness","count") %in% names(indices)))
   habitat %>%
     dplyr::select(grid, wetlandTot, perWV, WVclass) %>%
-    left_join(indices %>% dplyr::select(grid, richness, count), by = "grid") %>%
-    mutate(
+    dplyr::left_join(indices %>% dplyr::select(grid, richness, count), by = "grid") %>%
+    dplyr::mutate(
       logArea   = log2(wetlandTot * 10 + 1),
       abundance = count
     ) %>%
@@ -49,8 +48,8 @@ fs::dir_create(OUT_DIR, recurse = TRUE)
 s.mod_hotspot.ric <- glmmTMB(richness  ~ logArea * perWV, family = nbinom2, data = s.glm.dat)
 s.mod_hotspot.ab  <- glmmTMB(abundance ~ logArea * perWV, family = nbinom2, data = s.glm.dat)
 
-aov_s_ric <- Anova(s.mod_hotspot.ric, type = 3)
-aov_s_ab  <- Anova(s.mod_hotspot.ab,  type = 3)
+aov_s_ric <- car::Anova(s.mod_hotspot.ric, type = 3)
+aov_s_ab  <- car::Anova(s.mod_hotspot.ab,  type = 3)
 
 area_seq_s <- seq(min(s.glm.dat$logArea, na.rm = TRUE),
                   max(s.glm.dat$logArea, na.rm = TRUE), length.out = 100)
@@ -64,8 +63,8 @@ s.pred_grid$pred_abundance <- predict(s.mod_hotspot.ab,  newdata = s.pred_grid)
 w.mod_hotspot.ric <- glmmTMB(richness  ~ logArea * perWV, family = nbinom2, data = w.glm.dat)
 w.mod_hotspot.ab  <- glmmTMB(abundance ~ logArea * perWV, family = nbinom2, data = w.glm.dat)
 
-aov_w_ric <- Anova(w.mod_hotspot.ric, type = 3)
-aov_w_ab  <- Anova(w.mod_hotspot.ab,  type = 3)
+aov_w_ric <- car::Anova(w.mod_hotspot.ric, type = 3)
+aov_w_ab  <- car::Anova(w.mod_hotspot.ab,  type = 3)
 
 area_seq_w <- seq(min(w.glm.dat$logArea, na.rm = TRUE),
                   max(w.glm.dat$logArea, na.rm = TRUE), length.out = 100)
@@ -82,17 +81,17 @@ breaks  <- c(-Inf, 2, 4, Inf)
 labels  <- c("Small", "Medium", "Large")
 
 s.pred_grid_binned <- s.pred_grid %>%
-  mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
-         season   = "Summer")
+  dplyr::mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
+                season   = "Summer")
 
 w.pred_grid_binned <- w.pred_grid %>%
-  mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
-         season   = "Winter")
+  dplyr::mutate(area_bin = cut(logArea, breaks = breaks, labels = labels),
+                season   = "Winter")
 
-combined_pred <- bind_rows(s.pred_grid_binned, w.pred_grid_binned) %>%
-  pivot_longer(cols = c(pred_richness, pred_abundance),
-               names_to = "metric", values_to = "value") %>%
-  mutate(
+combined_pred <- dplyr::bind_rows(s.pred_grid_binned, w.pred_grid_binned) %>%
+  tidyr::pivot_longer(cols = c(pred_richness, pred_abundance),
+                      names_to = "metric", values_to = "value") %>%
+  dplyr::mutate(
     metric   = factor(metric, levels = c("pred_richness", "pred_abundance"),
                       labels = c("Richness", "Abundance")),
     season   = factor(season, levels = c("Summer", "Winter")),
@@ -100,22 +99,22 @@ combined_pred <- bind_rows(s.pred_grid_binned, w.pred_grid_binned) %>%
   )
 
 line_summary_sd <- combined_pred %>%
-  group_by(area_bin, perWV, season, metric) %>%
-  summarize(
+  dplyr::group_by(area_bin, perWV, season, metric) %>%
+  dplyr::summarize(
     mean_value = mean(value, na.rm = TRUE),
     sd         = sd(value,   na.rm = TRUE),
     .groups = "drop"
   ) %>%
-  mutate(lower = mean_value - sd,
-         upper = mean_value + sd)
+  dplyr::mutate(lower = mean_value - sd,
+                upper = mean_value + sd)
 
 # -----------------------------------------------------------------------------
 # Plots
 # -----------------------------------------------------------------------------
 color_vals <- c("Small" = "#56B4E9", "Medium" = "#F0E442", "Large" = "#009E73")
 
-range_ric <- range(combined_pred %>% filter(metric == "Richness")  %>% pull(value), na.rm = TRUE)
-range_ab  <- range(combined_pred %>% filter(metric == "Abundance") %>% pull(value), na.rm = TRUE)
+range_ric <- range(combined_pred %>% dplyr::filter(metric == "Richness")  %>% dplyr::pull(value), na.rm = TRUE)
+range_ab  <- range(combined_pred %>% dplyr::filter(metric == "Abundance") %>% dplyr::pull(value), na.rm = TRUE)
 
 # --- exact p to 3 decimals (with <0.001) ---
 fmt_p3 <- function(p, thresh = 0.001) {
@@ -132,15 +131,30 @@ anova_p_label <- function(aov_obj, term = "logArea:perWV") {
   fmt_p3(p)
 }
 
-lab_s_ric <- anova_p_label(aov_s_ric)  # summer richness interaction p
-lab_s_ab  <- anova_p_label(aov_s_ab)   # summer abundance interaction p
-lab_w_ric <- anova_p_label(aov_w_ric)  # winter richness interaction p
-lab_w_ab  <- anova_p_label(aov_w_ab)   # winter abundance interaction p
+# --- McFadden pseudo-R2 (1 - logLik(model)/logLik(null))
+mcfadden_r2 <- function(mod, df, response) {
+  null_form <- as.formula(paste0(response, " ~ 1"))
+  null_mod <- glmmTMB::glmmTMB(null_form, data = df, family = nbinom2)
+  1 - as.numeric(logLik(mod)) / as.numeric(logLik(null_mod))
+}
+fmt_r2 <- function(r2) paste0("R\u00b2 = ", sprintf("%.3f", r2))  # ² escape, not
 
+
+
+lab_s_ric <- paste0(anova_p_label(aov_s_ric), "\n", fmt_r2(mcfadden_r2(s.mod_hotspot.ric, s.glm.dat, "richness")))
+lab_s_ab  <- paste0(anova_p_label(aov_s_ab),  "\n", fmt_r2(mcfadden_r2(s.mod_hotspot.ab,  s.glm.dat, "abundance")))
+lab_w_ric <- paste0(anova_p_label(aov_w_ric), "\n", fmt_r2(mcfadden_r2(w.mod_hotspot.ric, w.glm.dat, "richness")))
+lab_w_ab  <- paste0(anova_p_label(aov_w_ab),  "\n", fmt_r2(mcfadden_r2(w.mod_hotspot.ab,  w.glm.dat, "abundance")))
+
+
+tag_theme <- theme(
+  plot.tag = element_text(face = "bold", size = 18),
+  plot.tag.position = c(0.02, 0.98)
+)
 
 plot_metric_season <- function(df, metric_name, season_name) {
   df %>%
-    filter(metric == metric_name, season == season_name) %>%
+    dplyr::filter(metric == metric_name, season == season_name) %>%
     ggplot(aes(x = perWV, y = value, group = logArea, color = area_bin)) +
     geom_line(alpha = 0.1, linewidth = 0.6) +
     scale_color_manual(values = color_vals) +
@@ -155,7 +169,9 @@ plot_metric_season <- function(df, metric_name, season_name) {
     )
 }
 
-# “many-lines” view
+# "many-lines" view -- an exploratory diagnostic (one line per simulated
+# wetland), NOT the captioned Fig. 3 (that's the mean±SD ribbon version
+# below, one_row_ci/hotspots_ci_row.png). 
 p1 <- plot_metric_season(combined_pred, "Richness",  "Summer") + ylim(range_ric)
 p2 <- plot_metric_season(combined_pred, "Abundance", "Summer") + ylim(range_ab)
 p3 <- plot_metric_season(combined_pred, "Richness",  "Winter") + ylim(range_ric)
@@ -164,7 +180,9 @@ p4 <- plot_metric_season(combined_pred, "Abundance", "Winter") + ylim(range_ab)
 final_plot <- (p1 + p2) / (p3 + p4) + plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
-# Mean±SD ribbons
+# Mean±SD ribbons -- this is Fig. 3 (S2.3 area-class × vegetation-cover
+# interaction; caption: "Interactive effects of foundation species cover and
+# wetland area on waterbird richness and abundance").
 plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
   ylab_txt <- if (metric_name == "Richness") "log(Richness)" else "log(Abundance)"
   g <- df %>%
@@ -176,26 +194,26 @@ plot_line_sd_metric <- function(df, metric_name, season_name, ann_text = NULL) {
     scale_fill_manual(values = color_vals) +
     labs(x = "Vegetation cover (%)", y = ylab_txt,
          title = season_name, color = "Wetland size", fill = "Wetland size") +
-    theme_classic(base_size = 12) +
+    theme_classic(base_size = 16) +
     theme(
       legend.position = "bottom",
-      plot.title = element_text(face = "bold", hjust = 0.5, size = 11),
-      axis.title = element_text(size = 12),
-      axis.text  = element_text(size = 12)
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 18),
+      axis.title = element_text(size = 17),
+      axis.text  = element_text(size = 16)
     )
   
   if (!is.null(ann_text)) {
     labdf <- data.frame(x = -Inf, y = Inf, label = ann_text)
     g <- g + geom_text(data = labdf, aes(x = x, y = y, label = label),
-                       inherit.aes = FALSE, hjust = -0.05, vjust = 1.1, size = 4)
+                       inherit.aes = FALSE, hjust = -0.05, vjust = 1.1, size = 5)
   }
   g
 }
 
 
 
-range_ric_ci <- range(line_summary_sd %>% filter(metric == "Richness")  %>% dplyr::select(lower, upper), na.rm = TRUE)
-range_ab_ci  <- range(line_summary_sd %>% filter(metric == "Abundance") %>% dplyr::select(lower, upper), na.rm = TRUE)
+range_ric_ci <- range(line_summary_sd %>% dplyr::filter(metric == "Richness")  %>% dplyr::select(lower, upper), na.rm = TRUE)
+range_ab_ci  <- range(line_summary_sd %>% dplyr::filter(metric == "Abundance") %>% dplyr::select(lower, upper), na.rm = TRUE)
 
 q1 <- plot_line_sd_metric(line_summary_sd, "Richness",  "Summer", lab_s_ric) + ylim(range_ric_ci) + labs(tag = "a") + tag_theme
 q2 <- plot_line_sd_metric(line_summary_sd, "Abundance","Summer", lab_s_ab ) + ylim(range_ab_ci ) + labs(tag = "c") + tag_theme 
@@ -207,8 +225,8 @@ one_row_ci <- (q1 + q3 + plot_spacer() + q2 + q4) +
   plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1), guides = "collect") &
   theme(
     legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text  = element_text(size = 9)
+    legend.title = element_text(size = 15),
+    legend.text  = element_text(size = 14)
   )
 
 ggsave(here::here("Figures", "hotspots_ci_row.png"),
@@ -219,9 +237,6 @@ print(one_row_ci)
 # -----------------------------------------------------------------------------
 ggsave(here::here("Figures", "biointeraction_lineplot_manylines.png"),
        final_plot, width = 7, height = 6, dpi = 300)
-
-ggsave(here::here("Figures", "biointeraction_lineplot_with_ci.png"),
-       final_line_ci_plot, width = 7, height = 6, dpi = 300)
 
 # Save predictions & ANOVAs
 readr::write_csv(s.pred_grid, file.path(OUT_DIR, "summer_pred_grid.csv"))

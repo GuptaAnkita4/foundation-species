@@ -1,11 +1,13 @@
-# scripts/10_analysis_wv_interactions_continuous.R
+# scripts/03b_analysis_wv_interactions_continuous.R
+
 suppressPackageStartupMessages({
-  library(here); library(pacman)
+  library(here); library(dplyr); library(ggplot2); library(readr)
+  library(glmmTMB); library(ggeffects); library(car); library(DHARMa)
+  library(patchwork); library(GGally); library(fs); library(purrr)
 })
-pacman::p_load(
-  dplyr, ggplot2, readr, glmmTMB, ggeffects, emmeans, car, DHARMa,
-  patchwork, GGally, cowplot, fs, purrr
-  # mgcv  # <- uncomment if you run the GAM sensitivity at bottom
+stopifnot(
+  "s.glm.dat/w.glm.dat not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
+    exists("s.glm.dat") && exists("w.glm.dat")
 )
 
 dir.create(here("Figures"), showWarnings = FALSE)
@@ -25,7 +27,7 @@ tlog_line       <- function(mu) log(mu)
 normalize_glm_dat_cont <- function(df) {
   stopifnot(all(c("grid","logArea","perWV","richness","abundance") %in% names(df)))
   df %>%
-    mutate(
+    dplyr::mutate(
       perWV_sc = pmin(pmax(perWV/100, 0), 1),   # 0–1
       log_rich = tlog_point_rich(richness),
       log_abun = tlog_point_abun(abundance)
@@ -41,6 +43,7 @@ ggsave(here("Figures", "pairplot_summer_continuous.png"), pairplot, width = 8, h
 # -----------------------------------------------------------------------------
 # Modeling helpers (CONTINUOUS cover)
 # -----------------------------------------------------------------------------
+
 fit_nb_cont <- function(df, response, quadratic = TRUE) {
   if (quadratic) {
     form_full <- as.formula(paste0(
@@ -94,9 +97,9 @@ anova_sig_label_cont <- function(mod, quadratic = TRUE) {
 
 diag_dharma <- function(mod, tag) {
   sim <- DHARMa::simulateResiduals(mod)
+  png(here("Figures", paste0("dharma_", tag, "_continuous.png")), width = 7, height = 5, units = "in", res = 300)
+  on.exit(grDevices::dev.off(), add = TRUE)
   plot(sim)
-  ggplot2::ggsave(here("Figures", paste0("dharma_", tag, "_continuous.png")),
-                  width = 7, height = 5, dpi = 300)
   invisible(sim)
 }
 
@@ -108,8 +111,8 @@ QUAD <- TRUE  # set FALSE to drop the quadratic term
 # Summer
 s_nb_rich_c  <- fit_nb_cont(s.glm.dat, "richness",  quadratic = QUAD)
 s_nb_abun_c  <- fit_nb_cont(s.glm.dat, "abundance", quadratic = QUAD)
-print(summary(s_nb_rich_c));  print(Anova(s_nb_rich_c, type = "III"))
-print(summary(s_nb_abun_c));  print(Anova(s_nb_abun_c, type = "III"))
+print(summary(s_nb_rich_c));  print(car::Anova(s_nb_rich_c, type = "III"))
+print(summary(s_nb_abun_c));  print(car::Anova(s_nb_abun_c, type = "III"))
 
 diag_dharma(s_nb_rich_c, "summer_richness_cont")
 diag_dharma(s_nb_abun_c, "summer_abundance_cont")
@@ -123,8 +126,8 @@ lab_abun_s_c <- anova_sig_label_cont(s_nb_abun_c, quadratic = QUAD)
 # Winter
 w_nb_rich_c  <- fit_nb_cont(w.glm.dat, "richness",  quadratic = QUAD)
 w_nb_abun_c  <- fit_nb_cont(w.glm.dat, "abundance", quadratic = QUAD)
-print(summary(w_nb_rich_c));  print(Anova(w_nb_rich_c, type = "III"))
-print(summary(w_nb_abun_c));  print(Anova(w_nb_abun_c, type = "III"))
+print(summary(w_nb_rich_c));  print(car::Anova(w_nb_rich_c, type = "III"))
+print(summary(w_nb_abun_c));  print(car::Anova(w_nb_abun_c, type = "III"))
 
 diag_dharma(w_nb_rich_c, "winter_richness_cont")
 diag_dharma(w_nb_abun_c, "winter_abundance_cont")
@@ -227,7 +230,7 @@ extract_glmmTMB <- function(mod, label) {
   
   av <- tryCatch({
     a <- car::Anova(mod, type = "III")
-    at <- as.data.frame(a); at$term <- rownames(a); rownames(a) <- NULL
+    at <- as.data.frame(a); at$term <- rownames(at); rownames(at) <- NULL
     names(at) <- sub("Pr\\(>Chisq\\)", "p_value", names(at)); at$model <- label; at
   }, error = function(e) NULL)
   
@@ -299,9 +302,10 @@ message("✅ Continuous-cover model outputs written to: ", OUT_DIR)
 # -----------------------------------------------------------------------------
 # (Optional) GAM sensitivity with smooth interaction surface
 # -----------------------------------------------------------------------------
-pacman::p_load(mgcv)
-gam_rich_s <- mgcv::gam(richness ~ s(logArea, k=4) + s(perWV_sc, k=4) +
-                          ti(logArea, perWV_sc, k=c(4,4)) + s(grid, bs="re"),
-                        family = nb(), data = s.glm.dat)
-summary(gam_rich_s); plot(gam_rich_s, pages=1)
-ggeffects::ggpredict(gam_rich_s, terms = c("logArea","perWV_sc[0.1,0.3,0.5,0.7,0.9]"))
+# 
+# suppressPackageStartupMessages(library(mgcv))
+# gam_rich_s <- mgcv::gam(richness ~ s(logArea, k=4) + s(perWV_sc, k=4) +
+#                           ti(logArea, perWV_sc, k=c(4,4)) + s(grid, bs="re"),
+#                         family = nb(), data = s.glm.dat)
+# summary(gam_rich_s); plot(gam_rich_s, pages=1)
+# ggeffects::ggpredict(gam_rich_s, terms = c("logArea","perWV_sc[0.1,0.3,0.5,0.7,0.9]"))

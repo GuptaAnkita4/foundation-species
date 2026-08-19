@@ -1,9 +1,15 @@
-# --- scripts/02_sar_aar.R ----------------------------------------------------
+# --- scripts/02_SAR_AAR.R ----------------------------------------------------
 
 pacman::p_load(
-  ggplot2, dplyr, readr, sars, cowplot, glmmTMB, patchwork,
+  ggplot2, dplyr, readr, sars, patchwork,
   here, fs, tibble
 )
+
+stopifnot(
+  "s.sparea/w.sparea not found -- run scripts/00_create_datasets.R first (or run via run_all.R)" =
+    exists("s.sparea") && exists("w.sparea")
+)
+
 
 ######################################################
 ##-------Testing Species-Area Relationships---------##
@@ -25,23 +31,23 @@ safe_log <- function(x) { # plotting-only: drop zeros
 }
 
 s.sparea <- s.sparea %>%
-  mutate(logArea  = log2(aT),
+  dplyr::mutate(logArea  = log2(aT),
          logRich  = safe_log(s),
          logAbund = safe_log(a))
 
 w.sparea <- w.sparea %>%
-  mutate(logArea  = log2(aT),
+  dplyr::mutate(logArea  = log2(aT),
          logRich  = safe_log(s),
          logAbund = safe_log(a))
 
 # ---- Extract coefficients (c, z) and R2 / p (from sars object) ----
-c_s_sar <- s.sar$par[1]; z_s_sar <- s.sar$par[2]; p_s_sar <- s.sar$sigConf[8]; r2_s_sar <- s.sar$R2
-c_w_sar <- w.sar$par[1]; z_w_sar <- w.sar$par[2]; p_w_sar <- w.sar$sigConf[8]; r2_w_sar <- w.sar$R2
-c_s_aar <- s.aar$par[1]; z_s_aar <- s.aar$par[2]; p_s_aar <- s.aar$sigConf[8]; r2_s_aar <- s.aar$R2
-c_w_aar <- w.aar$par[1]; z_w_aar <- w.aar$par[2]; p_w_aar <- w.aar$sigConf[8]; r2_w_aar <- w.aar$R2
+c_s_sar <- s.sar$par[1]; z_s_sar <- s.sar$par[2]; p_s_sar <- s.sar$sigConf["z", "Pr(>|t|)"]; r2_s_sar <- s.sar$R2
+c_w_sar <- w.sar$par[1]; z_w_sar <- w.sar$par[2]; p_w_sar <- w.sar$sigConf["z", "Pr(>|t|)"]; r2_w_sar <- w.sar$R2
+c_s_aar <- s.aar$par[1]; z_s_aar <- s.aar$par[2]; p_s_aar <- s.aar$sigConf["z", "Pr(>|t|)"]; r2_s_aar <- s.aar$R2
+c_w_aar <- w.aar$par[1]; z_w_aar <- w.aar$par[2]; p_w_aar <- w.aar$sigConf["z", "Pr(>|t|)"]; r2_w_aar <- w.aar$R2
 
-# ---- Predictions on log₂(A) axis with CORRECT slope scaling ----
-# 🔧 ln(S) = ln(c) + z * ln(2) * log2(A)
+# ---- Predictions on log₂(A) axis ----
+# ln(S) = ln(c) + z * ln(2) * log2(A)
 ln2 <- log(2)
 make_pred <- function(c_, z_, log2A_seq) {
   tibble(logArea = log2A_seq,
@@ -88,25 +94,25 @@ ylim_abund <- range(c(s.sparea$logAbund, w.sparea$logAbund,
                       pred_s_aar$logPred, pred_w_aar$logPred), na.rm = TRUE)
 
 # ---- Theme + utils ----
+# Font sizes bumped up throughout (per Reviewer 1, Specific Comment S2: "all
+# figure fonts (axes, numbers, legends) need to be larger").
 okabe_ito <- c(blue = "#0072B2", vermillion = "#D55E00")
 my_theme <- theme_bw() +
   theme(panel.grid = element_blank(),
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 12),
-        plot.title = element_text(size = 12, face = "bold", hjust = 0.5))
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 17),
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.5))
 
 fmt_p3 <- function(p, thresh = 0.001) {
   if (is.na(p)) return("NA")
   if (p < thresh) return(paste0("<", format(thresh, nsmall = 3)))
   paste0("=", sprintf("%.3f", p))
 }
-# lab_stats <- function(z, p, r2) {
-#   paste0("z = ", round(z, 3),
-#          ", p = ", fmt_p3(p),
-#          "\nR\u00b2 = ", round(r2, 3))
-# }
-lab_stats <- function(p) {
-  paste0("p", fmt_p3(p))
+# In-panel stats label: p-value (from sars::sar_power's NLS-based inference)
+# plus R2 (1 - RSS/TSS on the raw scale)
+lab_stats <- function(p, r2) {
+  paste0("p", fmt_p3(p),
+         "\nR\u00b2 = ", sprintf("%.3f", r2))
 }
 ann_xy <- function(xlim, ylim) {
   list(x = min(xlim) + 0.02 * diff(xlim),
@@ -114,7 +120,7 @@ ann_xy <- function(xlim, ylim) {
 }
 # --- subplot tag styling (bold letter in top-left) ---
 tag_theme <- theme(
-  plot.tag = element_text(face = "bold", size = 12),
+  plot.tag = element_text(face = "bold", size = 18),
   plot.tag.position = c(0.02, 0.98)  # x,y in [0,1] npc
 )
 
@@ -128,10 +134,8 @@ p1 <- ggplot(s.sparea, aes(x = logArea, y = logRich)) +
   labs(title = "Summer", x = expression(log[2]("Wetland Area")), y = expression(log("Richness"))) +
   scale_x_continuous(limits = xlim_rich) +
   scale_y_continuous(limits = ylim_rich) +
-  # annotate("text", x = a1$x, y = a1$y, label = lab_stats(z_s_sar, p_s_sar, r2_s_sar),
-  #          hjust = 0, vjust = 1, size = 3.5) +
-  annotate("text", x = a1$x, y = a1$y, label = lab_stats(p_s_sar),
-           hjust = 0, vjust = 1, size = 3.5) +
+  annotate("text", x = a1$x, y = a1$y, label = lab_stats(p_s_sar, r2_s_sar),
+           hjust = 0, vjust = 1, size = 5) +
   my_theme
 
 a2 <- ann_xy(xlim_rich, ylim_rich)
@@ -142,10 +146,8 @@ p2 <- ggplot(w.sparea, aes(x = logArea, y = logRich)) +
   labs(title = "Winter", x = expression(log[2]("Wetland Area")), y = NULL) +
   scale_x_continuous(limits = xlim_rich) +
   scale_y_continuous(limits = ylim_rich) +
-  # annotate("text", x = a2$x, y = a2$y, label = lab_stats(z_w_sar, p_w_sar, r2_w_sar),
-  #          hjust = 0, vjust = 1, size = 3.5) +
-  annotate("text", x = a2$x, y = a2$y, label = lab_stats(p_w_sar),
-           hjust = 0, vjust = 1, size = 3.5) +
+  annotate("text", x = a2$x, y = a2$y, label = lab_stats(p_w_sar, r2_w_sar),
+           hjust = 0, vjust = 1, size = 5) +
   my_theme
 
 b1 <- ann_xy(xlim_abund, ylim_abund)
@@ -156,10 +158,8 @@ p3 <- ggplot(s.sparea, aes(x = logArea, y = logAbund)) +
   labs(title = "Summer", x = expression(log[2]("Wetland Area")), y = expression(log("Abundance"))) +
   scale_x_continuous(limits = xlim_abund) +
   scale_y_continuous(limits = ylim_abund) +
-  # annotate("text", x = b1$x, y = b1$y, label = lab_stats(z_s_aar, p_s_aar, r2_s_aar),
-  #          hjust = 0, vjust = 1, size = 3.5) +
-  annotate("text", x = b1$x, y = b1$y, label = lab_stats(p_s_aar),
-           hjust = 0, vjust = 1, size = 3.5) +
+  annotate("text", x = b1$x, y = b1$y, label = lab_stats(p_s_aar, r2_s_aar),
+           hjust = 0, vjust = 1, size = 5) +
   my_theme
 
 b2 <- ann_xy(xlim_abund, ylim_abund)
@@ -170,10 +170,8 @@ p4 <- ggplot(w.sparea, aes(x = logArea, y = logAbund)) +
   labs(title = "Winter", x = expression(log[2]("Wetland Area")), y = NULL) +
   scale_x_continuous(limits = xlim_abund) +
   scale_y_continuous(limits = ylim_abund) +
-  # annotate("text", x = b2$x, y = b2$y, label = lab_stats(z_w_aar, p_w_aar, r2_w_aar),
-  #          hjust = 0, vjust = 1, size = 3.5) +
-  annotate("text", x = b2$x, y = b2$y, label = lab_stats(p_w_aar),
-           hjust = 0, vjust = 1, size = 3.5) +
+  annotate("text", x = b2$x, y = b2$y, label = lab_stats(p_w_aar, r2_w_aar),
+           hjust = 0, vjust = 1, size = 5) +
   my_theme
 
 p1 <- p1 + labs(tag = "d") + tag_theme
@@ -185,7 +183,7 @@ p4 <- p4 + labs(tag = "g") + tag_theme
 final_plot <- (p1 + p2 + plot_spacer() + p3 + p4) +
   plot_layout(ncol = 5, widths = c(1, 1, 0.05, 1, 1))
 
-print(final_plot)
+#print(final_plot)
 
 # ---- Save figure ----
 fs::dir_create(here::here("Figures"))

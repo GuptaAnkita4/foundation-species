@@ -17,7 +17,7 @@ w.sparea <- make_sparea(w.habitat, w.indices, area_mode = "x10_plus1")
 s.troph <- make_trophic_dist(s.habitat, s.indices)
 w.troph <- make_trophic_dist(w.habitat, w.indices)
 
-# long tables (names match your usage)
+# long tables
 s.sparea.troph <- s.troph$richness
 s.spcount.troph <- s.troph$count
 s.spbio.troph  <- s.troph$biomass
@@ -40,7 +40,7 @@ w.f.dat <- make_functional_dat(w.habitat, w.indices)
 # w.spcount.troph$trophLevel <- label_troph_count(w.spcount.troph$trophLevel)
 
 
-# save these datasets for future use
+# saving these datasets for future use
 suppressPackageStartupMessages({
   library(readr)
   library(fs)
@@ -48,7 +48,7 @@ suppressPackageStartupMessages({
 })
 
 # 1) choose an output folder (dated for versioning)
-OUT_ROOT <- "Data/derived"
+OUT_ROOT <- here::here("Data/derived")
 STAMP    <- format(Sys.Date(), "%Y-%m-%d")  # e.g., 2025-09-18
 OUT_DIR  <- file.path(OUT_ROOT, STAMP)
 dir_create(OUT_DIR, recurse = TRUE)
@@ -74,16 +74,16 @@ write_matrix_wide <- function(mat_or_df, path, rowname_as = "grid") {
   write_csv_safe(df, path)
 }
 
-# 2) files to write (adjust to taste)
+# 2) files to write
 files <- list(
   s_sparea_troph = list(obj = s.sparea.troph,  file = file.path(OUT_DIR, "summer_trophic_metrics.csv")),
   w_sparea_troph = list(obj = w.sparea.troph,  file = file.path(OUT_DIR, "winter_trophic_metrics.csv"))
  )
 
 # 3) write CSVs
-purrr::walk(files, function(x) {
+purrr::iwalk(files, function(x, item_name) {
   obj <- x$obj; fp <- x$file
-  if (grepl("birds_.*_csv$", names(files)[which(vapply(files, identical, logical(1), x))])) {
+  if (grepl("birds_.*_csv$", item_name)) {
     # for community matrices keep first column as 'grid'
     write_matrix_wide(obj, fp, rowname_as = "grid")
   } else {
@@ -92,7 +92,7 @@ purrr::walk(files, function(x) {
 })
 
 
-# 5) simple manifest (what was written + basic dims)
+# 5) manifest (what was written + basic dims)
 manifest <- tibble::tibble(
   file = basename(vapply(files, `[[`, "", "file")),
   path = normalizePath(vapply(files, `[[`, "", "file"), winslash = "/"),

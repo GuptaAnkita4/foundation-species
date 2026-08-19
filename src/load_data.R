@@ -1,7 +1,6 @@
-# src/R/load_data.R
+# src/load_data.R
 suppressPackageStartupMessages({
   library(readr)
-  library(dplyr)
   library(here)
 })
 

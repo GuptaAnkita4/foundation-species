@@ -6,9 +6,7 @@
 # Addresses Reviewer 1: General Comment 4 (site-selection / random-effect /
 # leverage) and Specific Comment 9 (R^2 for GLMs/GLMMs, with vs without the
 # grid-cell random factor).
-#
-# Run from the project root (where data/processed/*.csv live), with
-# src/load_data.R and src/build_datasets.R available.
+
 # ==============================================================================
 suppressPackageStartupMessages({
   library(dplyr); library(tidyr); library(readr); library(glmmTMB)
